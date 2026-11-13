@@ -771,7 +771,13 @@
     "tapForBox": "Toque num acorde para ver o diagrama.",
     "tapForTones": "Toque num acorde para ver a tônica, a terça e a quinta.",
     "tonesOf": "{chord}: tônica, terça e quinta",
-    "unavailable": "Esta progressão não pode ser tocada aqui agora."
+    "unavailable": "Esta progressão não pode ser tocada aqui agora.",
+    "patterns": {
+      "root": "Fundamental de cada acorde",
+      "root_fifth": "Fundamental e 5ª de cada acorde",
+      "root_third_fifth_third": "Fundamental, 3ª, 5ª e 3ª de cada acorde",
+      "root_third_fifth_seventh": "Fundamental, 3ª, 5ª e 7ª de cada acorde"
+    }
   },
   "guideTone": {
     "promptThird": "Toque a 3ª de cada acorde",

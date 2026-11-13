@@ -11,16 +11,28 @@ const ORDER: MusicKey[] = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A'
 /** I–V–vi–IV in the keys the drill voicings can play; the other keys have no chart. */
 const CHARTS: Partial<Record<MusicKey, DrillChordSymbol[]>> = { G: ['G', 'D', 'Em', 'C'], C: ['C', 'G', 'Am', 'C'] }
 
-/** On bass, each chord's root, third and fifth in G, at its lowest fret, as the plan gives them. */
+type BassPattern = components['schemas']['BassPattern']
+
+/** On bass, the window G's chords are marked in: frets 3 to 7. */
+const G_WINDOW = 3
+const at = (string: number, fret: number) => ({ string, fret })
+
+/**
+ * On bass, each chord's root and its third and fifth above and below in G's window, as the plan
+ * gives them: a tone no string reaches in the window is null, and no seventh is marked.
+ */
 const G_TONES = [
-  { chord: 'G', root: { string: 1, fret: 0 }, third: { string: 3, fret: 2 }, fifth: { string: 2, fret: 0 } },
-  { chord: 'D', root: { string: 2, fret: 0 }, third: { string: 1, fret: 2 }, fifth: { string: 3, fret: 0 } },
-  { chord: 'Em', root: { string: 4, fret: 0 }, third: { string: 1, fret: 0 }, fifth: { string: 3, fret: 2 } },
-  { chord: 'C', root: { string: 3, fret: 3 }, third: { string: 2, fret: 2 }, fifth: { string: 1, fret: 0 } },
+  { chord: 'G', root: at(4, 3), third_above: at(4, 7), fifth_above: at(3, 5), third_below: null, fifth_below: null, seventh: null },
+  { chord: 'D', root: at(3, 5), third_above: at(2, 4), fifth_above: at(2, 7), third_below: null, fifth_below: at(4, 5), seventh: null },
+  { chord: 'Em', root: at(3, 7), third_above: at(2, 5), fifth_above: at(1, 4), third_below: at(4, 3), fifth_below: at(4, 7), seventh: null },
+  { chord: 'C', root: at(3, 3), third_above: at(3, 7), fifth_above: at(2, 5), third_below: null, fifth_below: at(4, 3), seventh: null },
 ]
 
-/** The pop progression's tour, starting in G at 84 BPM; on bass it marks the chord tones on the bass's layout. */
-export function tourItem(options: { onBass?: boolean } = {}): Item {
+/**
+ * The pop progression's tour, starting in G at 84 BPM; on bass it marks the chord tones on the
+ * bass's layout and plays the pattern given, its root alone unless another is given.
+ */
+export function tourItem(options: { onBass?: boolean; pattern?: BassPattern } = {}): Item {
   const layout = options.onBass ? drillBass.instrument_id : 'guitar'
   return {
     item_key: `progression_keys:${layout}:I-V-vi-IV`,
@@ -40,6 +52,7 @@ export function tourItem(options: { onBass?: boolean } = {}): Item {
       start_note_value: 'quarters',
       target_tempo_bpm: 100,
       min_tempo_bpm: 60,
+      bass_pattern: options.onBass ? (options.pattern ?? 'root') : null,
       keys: ORDER.map((music_key) => {
         const chart = CHARTS[music_key] ?? []
         return {
@@ -47,6 +60,7 @@ export function tourItem(options: { onBass?: boolean } = {}): Item {
           clean: false,
           chart,
           voicings: [...new Set(chart)].map((chord) => ({ chord, diagram_id: drillVoicings[chord].diagram.diagram_id })),
+          window_start_fret: options.onBass && music_key === 'G' ? G_WINDOW : null,
           chord_tones: options.onBass && music_key === 'G' ? G_TONES : [],
         }
       }),

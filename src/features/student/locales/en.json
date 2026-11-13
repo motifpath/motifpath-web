@@ -771,7 +771,13 @@
     "tapForBox": "Tap a chord to see its box.",
     "tapForTones": "Tap a chord to see its root, 3rd and 5th.",
     "tonesOf": "{chord}: root, 3rd and 5th",
-    "unavailable": "This progression can’t be played here right now."
+    "unavailable": "This progression can’t be played here right now.",
+    "patterns": {
+      "root": "Root of each chord",
+      "root_fifth": "Root and 5th of each chord",
+      "root_third_fifth_third": "Root, 3rd, 5th and 3rd of each chord",
+      "root_third_fifth_seventh": "Root, 3rd, 5th and 7th of each chord"
+    }
   },
   "guideTone": {
     "promptThird": "Tap the 3rd of each chord",

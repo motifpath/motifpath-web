@@ -180,7 +180,7 @@ const SessionProgressionKeysStub = defineComponent({
     takesLeft: { type: Number, required: true },
     takesTotal: { type: Number, required: true },
     tour: { type: Object, required: true },
-    tuning: { type: Array, default: null },
+    bass: { type: Object, default: null },
   },
   emits: ['rate', 'skip', 'tempo', 'noteValue'],
   setup() {
@@ -447,9 +447,12 @@ function rootChangeItem(): Item {
 }
 
 function tourItem(layout: string): Item {
-  const tones = layout === BASS ? [{ chord: 'A', root: { string: 3, fret: 0 }, third: { string: 2, fret: 4 }, fifth: { string: 4, fret: 0 } }] : []
+  const onBass = layout === BASS
+  const tones = onBass
+    ? [{ chord: 'A', root: { string: 3, fret: 0 }, third_above: { string: 2, fret: 4 }, fifth_above: null, third_below: null, fifth_below: { string: 4, fret: 0 }, seventh: null }]
+    : []
   const order: components['schemas']['MusicKey'][] = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G']
-  const keys = order.map((music_key) => ({ music_key, clean: false, chart: [], voicings: [], chord_tones: tones }))
+  const keys = order.map((music_key) => ({ music_key, clean: false, chart: [], voicings: [], window_start_fret: onBass ? 0 : null, chord_tones: tones }))
   return {
     ...chordBase,
     item_key: `progression_keys:${layout}:I-V-vi-IV`,
@@ -466,6 +469,7 @@ function tourItem(layout: string): Item {
       start_note_value: 'quarters',
       target_tempo_bpm: 100,
       min_tempo_bpm: 60,
+      bass_pattern: onBass ? 'root' : null,
       keys,
     },
   }
@@ -914,7 +918,7 @@ describe('PracticeSessionView', () => {
       await startSession(wrapper, plan([tourItem(GUITAR), shapeItem()]))
 
       const tour = wrapper.getComponent(SessionProgressionKeysStub)
-      expect(tour.props()).toMatchObject({ tempo: 85, noteValue: 'quarters', takesLeft: 3, takesTotal: 3, tour: { key: 'A', speed: 85, clean: [] }, tuning: null })
+      expect(tour.props()).toMatchObject({ tempo: 85, noteValue: 'quarters', takesLeft: 3, takesTotal: 3, tour: { key: 'A', speed: 85, clean: [] }, bass: null })
       tour.vm.$emit('rate', 'clean')
       await flushPromises()
 
@@ -925,11 +929,18 @@ describe('PracticeSessionView', () => {
       expect(segments(wrapper)[0]).toBeCloseTo(100 / 3, 0)
     })
 
-    it('marks a bass tour’s chord tones on its layout’s board', async () => {
+    it('gives a bass tour its bass, to mark the chord tones on and sound the pattern with', async () => {
       const wrapper = mountView()
       await startSession(wrapper, plan([tourItem(BASS)], { instrument_id: BASS }))
 
-      expect(wrapper.getComponent(SessionProgressionKeysStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+      expect(wrapper.getComponent(SessionProgressionKeysStub).props('bass')).toMatchObject({ instrument_id: BASS, tuning: ['E1', 'A1', 'D2', 'G2'] })
+    })
+
+    it('gives a guitar tour no bass', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([tourItem(GUITAR)]))
+
+      expect(wrapper.getComponent(SessionProgressionKeysStub).props('bass')).toBeNull()
     })
   })
 

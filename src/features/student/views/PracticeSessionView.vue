@@ -209,11 +209,11 @@ function fretboardOf(item: Item): string | undefined {
   )
 }
 
-/** The tuning a bass tour marks its chord tones with; null on guitar, whose tour shows boxes. */
-const currentTourTuning = computed(() => {
+/** The bass a bass tour marks its chord tones on and sounds its pattern with; null on guitar, whose tour shows boxes. */
+const currentTourBass = computed(() => {
   const tour = current.value?.progression_keys
-  if (!tour || !tour.keys.some((k) => k.chord_tones.length > 0)) return null
-  return tuningOf(tour.layout_instrument_id) ?? null
+  if (!tour || tour.bass_pattern === null) return null
+  return instrumentOf(tour.layout_instrument_id) ?? null
 })
 
 /** The layout a guide tone is tapped on: its tuning and name; null when its instrument isn't known. */
@@ -520,7 +520,7 @@ onBeforeUnmount(() => {
         :takes-left="run.takesLeft.value"
         :takes-total="run.takesTotal.value"
         :tour="run.tour.value"
-        :tuning="currentTourTuning"
+        :bass="currentTourBass"
         @rate="run.rate($event)"
         @skip="run.skip($event)"
         @tempo="run.setTempo($event)"
