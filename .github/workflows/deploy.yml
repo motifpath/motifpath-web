@@ -6,9 +6,9 @@ name: Deploy
 # staging to production is the commit, not the build.
 #
 # - Staging deploys on every push to `stage`.
-# - Production deploys a release: pushing a `vX.Y.Z` tag on `main` builds and
-#   publishes the tagged commit (after the `production` environment's
-#   approval, if it has reviewers), then publishes a GitHub Release with notes
+# - Production deploys a release: merging a PR into `main` tags the next
+#   `vX.Y.Z` and calls this workflow (see release.yml), which builds and
+#   publishes the tagged commit, then publishes a GitHub Release with notes
 #   since the previous one.
 # - Run by hand, `release` takes a tag (redeploy or roll back to it) or, in an
 #   emergency, a full commit SHA. Blank deploys the head of `stage` to
@@ -16,7 +16,6 @@ name: Deploy
 on:
   push:
     branches: [stage]
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       environment:
@@ -28,24 +27,32 @@ on:
         description: Release tag (vX.Y.Z) or full commit SHA; blank = head of stage (staging only)
         type: string
         required: false
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      release:
+        type: string
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
+  group: deploy-${{ inputs.environment || 'staging' }}
   cancel-in-progress: false
 
 env:
   AWS_REGION: us-east-2
-  DEPLOY_ENV: ${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
-  RELEASE: ${{ inputs.release || (github.ref_type == 'tag' && github.ref_name) || '' }}
+  DEPLOY_ENV: ${{ inputs.environment || 'staging' }}
+  RELEASE: ${{ inputs.release || '' }}
 
 jobs:
   deploy:
-    name: Deploy ${{ inputs.release || (github.ref_type == 'tag' && github.ref_name) || '' }} to ${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
+    name: Deploy ${{ inputs.release || '' }} to ${{ inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
+    environment: ${{ inputs.environment || 'staging' }}
     outputs:
       release: ${{ steps.choose.outputs.release }}
     steps:
@@ -87,10 +94,10 @@ jobs:
       - name: Choose the commit
         id: choose
         env:
-          PUSHED: ${{ github.event_name == 'push' && github.ref_type == 'branch' && github.sha || '' }}
+          PUSHED: ${{ github.event_name == 'push' && github.sha || '' }}
         run: |
           set -euo pipefail
-          git fetch --quiet --tags origin
+          git fetch --quiet --tags --force origin
           git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
           tag=
           if [[ "$RELEASE" =~ ^v ]]; then
@@ -170,7 +177,7 @@ jobs:
   publish-release:
     name: Publish GitHub Release ${{ needs.deploy.outputs.release }}
     needs: deploy
-    if: needs.deploy.outputs.release != '' && (inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging') == 'production'
+    if: needs.deploy.outputs.release != '' && (inputs.environment || 'staging') == 'production'
     runs-on: ubuntu-latest
     permissions:
       contents: write
