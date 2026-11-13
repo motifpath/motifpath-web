@@ -34,6 +34,7 @@ import SessionProgressionKeys from '@/features/student/components/SessionProgres
 import SessionGuideTone from '@/features/student/components/SessionGuideTone.vue'
 import SessionSong from '@/features/student/components/SessionSong.vue'
 import SessionChordVoicing from '@/features/student/components/SessionChordVoicing.vue'
+import SessionRootFifth from '@/features/student/components/SessionRootFifth.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionGeneratedChoice from '@/features/student/components/SessionGeneratedChoice.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
@@ -154,9 +155,14 @@ function instrumentLabel(id: string | null): string {
   return instrument ? localizedName(instrument.names) : t('practiceSessionView.inMyHead')
 }
 
+/** The instrument a layout is, as the instruments list gives it. */
+function instrumentOf(id: string) {
+  return instruments.value.find((instrument) => instrument.instrument_id === id)
+}
+
 /** The open-string pitches of an instrument, which its fretboard cells are drawn and graded with. */
 function tuningOf(id: string): string[] | undefined {
-  return instruments.value.find((instrument) => instrument.instrument_id === id)?.tuning
+  return instrumentOf(id)?.tuning
 }
 
 async function startSession() {
@@ -205,7 +211,7 @@ function fretboardOf(item: Item): string | undefined {
 
 /** The tuning a bass chord item's board is drawn with; none for a chord on guitar, drawn as its box. */
 const currentBassTuning = computed(() => {
-  const layout = current.value?.root_fifth?.layout_instrument_id ?? current.value?.root_change?.layout_instrument_id
+  const layout = current.value?.root_change?.layout_instrument_id
   return layout ? tuningOf(layout) : undefined
 })
 
@@ -486,10 +492,18 @@ onBeforeUnmount(() => {
         @note-value="run.setNoteValue($event)"
       />
       <SessionChordVoicing
-        v-else-if="current.chord_voicing || current.root_fifth"
+        v-else-if="current.chord_voicing"
         :key="run.index.value"
         :item="current"
-        :tuning="currentBassTuning"
+        :instrument-name="currentInstrumentName"
+        @rate="run.rateChord($event)"
+        @skip="run.skip($event)"
+      />
+      <SessionRootFifth
+        v-else-if="current.root_fifth"
+        :key="run.index.value"
+        :item="current"
+        :bass="instrumentOf(current.root_fifth.layout_instrument_id)"
         :instrument-name="currentInstrumentName"
         @rate="(rating, tempo) => run!.rateChord(rating, tempo)"
         @skip="run.skip($event)"

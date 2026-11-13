@@ -299,7 +299,14 @@
     "thirdOf": "Third of {chord}",
     "fifthOf": "Fifth of {chord}",
     "markedPlace": "{role}, string {string}, fret {fret}",
-    "markedOpen": "{role}, string {string}, open"
+    "markedOpen": "{role}, string {string}, open",
+    "thirdAbove": "Third above",
+    "thirdBelow": "Third below",
+    "fifthAbove": "Fifth above",
+    "fifthBelow": "Fifth below",
+    "seventh": "Seventh",
+    "seventhOf": "Seventh of {chord}",
+    "toneOf": "{tone}, of {chord}"
   },
   "songChart": {
     "key": "Key {key}",

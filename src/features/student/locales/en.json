@@ -269,7 +269,7 @@
   },
   "sessionChord": {
     "voicingHint": "Fret it, strum once and let it ring.",
-    "rootFifthHint": "Root, then fifth, each note ringing its full length.",
+    "rootFifthHint": "Root, then fifth, a half note each, with the metronome.",
     "bassBoard": "Bass board with the places to play for {chord}",
     "bassChangeBoard": "Bass board with the roots of {from} and {to}",
     "unavailable": "This chord can’t be shown right now. Skip it — it won’t count against you.",
@@ -285,7 +285,8 @@
     "shareQuestion": "How many changes rang clean, every string sounding?",
     "shareQuestionBass": "How many changes rang clean, the root sounding?",
     "share": "{share} %",
-    "shares": "Share of the changes that rang clean"
+    "shares": "Share of the changes that rang clean",
+    "rootFifthPlaying": "Play along: root, then fifth. The take ends by itself."
   },
   "sessionPlan": {
     "chords": {

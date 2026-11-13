@@ -269,7 +269,7 @@
   },
   "sessionChord": {
     "voicingHint": "Monte o acorde, toque uma vez e deixe soar.",
-    "rootFifthHint": "Fundamental, depois quinta, cada nota soando até o fim.",
+    "rootFifthHint": "Fundamental, depois quinta, uma mínima cada, com o metrônomo.",
     "bassBoard": "Braço do baixo com as notas a tocar de {chord}",
     "bassChangeBoard": "Braço do baixo com as fundamentais de {from} e {to}",
     "unavailable": "Este acorde não pode ser mostrado agora. Pule — não conta contra você.",
@@ -285,7 +285,8 @@
     "shareQuestion": "Quantas trocas soaram limpas, com todas as cordas?",
     "shareQuestionBass": "Quantas trocas soaram limpas, com a fundamental?",
     "share": "{share} %",
-    "shares": "Parte das trocas que soaram limpas"
+    "shares": "Parte das trocas que soaram limpas",
+    "rootFifthPlaying": "Toque junto: fundamental, depois quinta. A execução termina sozinha."
   },
   "sessionPlan": {
     "chords": {

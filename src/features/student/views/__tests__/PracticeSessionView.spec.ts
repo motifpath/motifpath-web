@@ -153,6 +153,15 @@ const SessionChordVoicingStub = defineComponent({
   },
 })
 
+const SessionRootFifthStub = defineComponent({
+  name: 'SessionRootFifth',
+  props: { item: { type: Object, required: true }, bass: { type: Object, default: undefined }, instrumentName: { type: String, default: undefined } },
+  emits: ['rate', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'root-fifth' })
+  },
+})
+
 const SessionChordChangeStub = defineComponent({
   name: 'SessionChordChange',
   props: { item: { type: Object, required: true }, tuning: { type: Array, default: undefined }, instrumentName: { type: String, default: undefined } },
@@ -475,6 +484,7 @@ function mountView() {
         SessionDiagramShape: SessionDiagramShapeStub,
         SessionGeneratedChoice: SessionGeneratedChoiceStub,
         SessionChordVoicing: SessionChordVoicingStub,
+        SessionRootFifth: SessionRootFifthStub,
         SessionChordChange: SessionChordChangeStub,
         SessionProgressionKeys: SessionProgressionKeysStub,
         SessionGuideTone: SessionGuideToneStub,
@@ -797,8 +807,8 @@ describe('PracticeSessionView', () => {
       const wrapper = mountView()
       await startSession(wrapper, plan([rootFifthItem(), rootChangeItem()], { instrument_id: BASS }))
 
-      expect(wrapper.getComponent(SessionChordVoicingStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
-      wrapper.getComponent(SessionChordVoicingStub).vm.$emit('rate', 'clean', 70)
+      expect(wrapper.getComponent(SessionRootFifthStub).props('bass')).toMatchObject({ instrument_id: BASS, tuning: ['E1', 'A1', 'D2', 'G2'] })
+      wrapper.getComponent(SessionRootFifthStub).vm.$emit('rate', 'clean', 70)
       await flushPromises()
 
       expect(events('practice.item_answered')).toEqual([

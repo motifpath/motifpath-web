@@ -299,7 +299,14 @@
     "thirdOf": "Terça de {chord}",
     "fifthOf": "Quinta de {chord}",
     "markedPlace": "{role}, corda {string}, casa {fret}",
-    "markedOpen": "{role}, corda {string}, solta"
+    "markedOpen": "{role}, corda {string}, solta",
+    "thirdAbove": "Terça acima",
+    "thirdBelow": "Terça abaixo",
+    "fifthAbove": "Quinta acima",
+    "fifthBelow": "Quinta abaixo",
+    "seventh": "Sétima",
+    "seventhOf": "Sétima de {chord}",
+    "toneOf": "{tone}, de {chord}"
   },
   "songChart": {
     "key": "Tom {key}",
