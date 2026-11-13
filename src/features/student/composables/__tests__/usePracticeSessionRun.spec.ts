@@ -5,6 +5,12 @@ vi.mock('@/shared/composables/useEventTracking', () => ({
   useEventTracking: () => ({ track }),
 }))
 
+/** The visible time each practice event reports, lap by lap: VISIBLE_MS unless a test queues others. */
+const VISIBLE_MS = 30_000
+const laps = vi.hoisted(() => ({ queued: [] as number[], started: 0 }))
+vi.mock('@/shared/composables/useVisibleTime', () => ({
+  useVisibleTime: () => ({ start: () => laps.started++, lap: () => laps.queued.shift() ?? 30_000 }),
+}))
 const measureExerciseAudio = vi.fn()
 vi.mock('@/shared/utils/exerciseAudio', () => ({
   measureExerciseAudio: (exercise: unknown, loadDiagram: unknown) => measureExerciseAudio(exercise, loadDiagram),
@@ -175,6 +181,19 @@ describe('usePracticeSessionRun', () => {
     measureExerciseAudio.mockReset().mockResolvedValue(undefined)
   })
 
+  it('says on every answer and on the end how long the session was visible since the event before', () => {
+    const run = usePracticeSessionRun(twoItems)
+    laps.queued = [95_000, 60_000]
+    run.start()
+    run.nextItem()
+    run.skip('unavailable')
+
+    expect(laps.started).toBeGreaterThan(0)
+    expect(tracked('practice.item_answered').map((event) => event.visible_ms)).toEqual([95_000])
+    expect(tracked('practice.session_ended').map((event) => event.visible_ms)).toEqual([60_000])
+    expect(tracked('practice.session_started')[0]).not.toHaveProperty('visible_ms')
+  })
+
   it('sends the plan as practice.session_started when the session starts', () => {
     const run = usePracticeSessionRun(twoItems)
     run.start()
@@ -291,6 +310,7 @@ describe('usePracticeSessionRun', () => {
     expect(tracked('practice.item_answered')).toEqual([
       {
         event_type: 'practice.item_answered',
+        visible_ms: VISIBLE_MS,
         practice_session_id: SESSION_ID,
         item_key: `play_along:${DUE}`,
         response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, note_value: 'quarters' },
@@ -321,6 +341,7 @@ describe('usePracticeSessionRun', () => {
     expect(tracked('practice.session_ended')).toEqual([
       {
         event_type: 'practice.session_ended',
+        visible_ms: VISIBLE_MS,
         practice_session_id: SESSION_ID,
         answered_count: 1,
         left_early: false,
@@ -629,6 +650,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `exercise:${EXERCISE}`,
           response: { response_type: 'option_choice', option_ids: ['right'], latency_ms: 4200 },
@@ -789,6 +811,7 @@ describe('usePracticeSessionRun', () => {
         expect(tracked('practice.item_answered')).toEqual([
           {
             event_type: 'practice.item_answered',
+            visible_ms: VISIBLE_MS,
             practice_session_id: SESSION_ID,
             item_key: `exercise:${LISTENING}`,
             response: { response_type: 'not_answered', reason: 'failed_to_load' },
@@ -950,6 +973,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `diagram_shape:${CAGED_A}`,
           response: { response_type: 'name_the_shape', shape: 'E', latency_ms: 2600 },
@@ -1070,6 +1094,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: 'diatonic_chord:G:vi',
           response: { response_type: 'generated_choice', way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'D', latency_ms: 3100 },
@@ -1257,6 +1282,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `fretboard_cell:${LAYOUT}:5:3`,
           response: { response_type: 'name_the_note', note_name: 'C', latency_ms: 1800 },
@@ -1324,6 +1350,7 @@ describe('usePracticeSessionRun', () => {
         expect(tracked('practice.item_answered')).toEqual([
           {
             event_type: 'practice.item_answered',
+            visible_ms: VISIBLE_MS,
             practice_session_id: SESSION_ID,
             item_key: `fretboard_cell:${LAYOUT}:6:3`,
             response: { response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps, latency_ms: 5200 },
@@ -1477,6 +1504,7 @@ describe('usePracticeSessionRun', () => {
         expect(tracked('practice.session_ended')).toEqual([
           {
             event_type: 'practice.session_ended',
+            visible_ms: VISIBLE_MS,
             practice_session_id: SESSION_ID,
             answered_count: 2,
             left_early: false,
@@ -1549,6 +1577,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `chord_voicing:${AM}`,
           response: { response_type: 'self_rating', rating: 'almost' },
@@ -1586,6 +1615,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `chord_change:${AM}:${C_OPEN}`,
           response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, changes_per_minute: 42 },
@@ -1754,6 +1784,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `progression_keys:${GUITAR_ID}:I-V-vi-IV`,
           response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 85, note_value: 'quarters', music_key: 'A' },
@@ -1852,6 +1883,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: 'guide_tone:guitar:ii-V-I',
           response: { response_type: 'timed_taps', music_key: 'G', tone: '3', tempo_bpm: 60, note_value: 'quarters', taps: EVERY_THIRD_AT_60 },
@@ -1931,6 +1963,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: 'song:guitar:chart-amazing-grace',
           response: { response_type: 'self_rating', rating: 'almost' },

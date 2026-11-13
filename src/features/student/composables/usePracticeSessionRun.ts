@@ -10,6 +10,7 @@ import type { PlayedTempo, RatedTake, TakeRating } from '@/features/student/util
 import { useApi } from '@/shared/composables/useApi'
 import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
+import { useVisibleTime } from '@/shared/composables/useVisibleTime'
 import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
 import { isExactMatch } from '@/shared/utils/exerciseOptions'
 import { gradeDiagramShape } from '@/shared/utils/diagramShape'
@@ -203,6 +204,8 @@ export interface PracticeSessionRunOptions {
 export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOptions = {}) {
   const { track } = useEventTracking()
   const { coreApi } = useApi()
+  /** The time the session is on screen, which every answer and its end report since the event before. */
+  const visible = useVisibleTime()
 
   const index = ref(0)
   const takes = ref<RatedTake[]>([])
@@ -356,6 +359,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function start() {
     if (started.value) return
     started.value = true
+    visible.start()
     shownAt = Date.now()
     startedAt = shownAt
     void track({
@@ -374,6 +378,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     void track(
       {
         event_type: 'practice.session_ended',
+        visible_ms: visible.lap(),
         practice_session_id: plan.practice_session_id,
         answered_count: answeredCount.value,
         left_early: leftEarly,
@@ -457,6 +462,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       markAnswered(item)
       void track({
         event_type: 'practice.item_answered',
+        visible_ms: visible.lap(),
         practice_session_id: plan.practice_session_id,
         item_key: item.item_key,
         response: { response_type: 'self_rating', rating, tempo_bpm: bpm, note_value: played, ...(key ? { music_key: key } : {}) },
@@ -484,6 +490,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'rated', rating })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { response_type: 'self_rating', rating },
@@ -501,6 +508,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'rated', rating })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { response_type: 'self_rating', rating },
@@ -521,6 +529,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'changes', tempoBpm, cleanChanges, rating })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { response_type: 'self_rating', rating, tempo_bpm: tempoBpm, changes_per_minute: cleanChanges },
@@ -560,6 +569,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'tapped', hits: best.hits, bars: planned.bars.length, correct: guideToneTakes.value.some((t) => t.correct) })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: {
@@ -609,6 +619,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const audio = amongSounds ? undefined : audioMs.get(exercise.exercise_id)
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: {
@@ -636,6 +647,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { ...answer, latency_ms: Date.now() - shownAt },
@@ -660,6 +672,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { ...answer, latency_ms: Date.now() - shownAt },
@@ -686,6 +699,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const heard = planned.playback ? answer.audioMs : undefined
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: {
@@ -711,6 +725,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { response_type: 'not_answered', reason },
