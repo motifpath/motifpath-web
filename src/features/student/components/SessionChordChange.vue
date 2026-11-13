@@ -10,10 +10,12 @@
  * at the same tempo. Leaving the session also ends it early; either way nothing is sent. When the
  * tenth cycle ends the metronome stops and four buttons ask what share of the changes rang clean;
  * picking one sends the tempo played and the share. On bass the take sounds each root on its beat
- * in the bass's own voice, never a chord, with the click. A chord that can't be drawn here, or a
+ * in the bass's own voice, never a chord, with the click, and the take keeps the player's time: its
+ * count-in waits for the roots to load and it ends when they have played through, or goes back to
+ * ready, saying so, when they can't load. A chord that can't be drawn here, or a
  * bass that isn't known, can only be skipped, as not answered.
  */
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { NotAnsweredReason } from '@/features/student/composables/usePracticeSessionRun'
@@ -138,10 +140,21 @@ function stopTimer() {
   timer = undefined
 }
 
+/**
+ * Beats since the count-in began: by the bass's clock while it sounds the roots, which start only
+ * once loaded (null until then), else by the time since Start, as the metronome starts at once.
+ */
+function beatsSinceStart(): number | null {
+  const beatMs = 60_000 / tempo.value
+  if (!playsRoots.value) return Math.floor((Date.now() - startedAt) / beatMs)
+  const musicMs = player.musicMs()
+  return musicMs === null ? null : COUNT_IN_BEATS + Math.floor(musicMs / beatMs)
+}
+
 /** Reads the clock: the count-in beat, then the beats played, until the last cycle ends. */
 function tick() {
-  const beatMs = 60_000 / tempo.value
-  const beats = Math.floor((Date.now() - startedAt) / beatMs)
+  const beats = beatsSinceStart()
+  if (beats === null) return
   if (beats < COUNT_IN_BEATS) {
     countIn.value = COUNT_IN_BEATS - beats
     return
@@ -152,7 +165,11 @@ function tick() {
   if (beatsPlayed.value >= totalBeats.value) takeOver()
 }
 
+/** The roots couldn't load, so the take is back to ready, saying so. */
+const loadError = ref(false)
+
 function startTake() {
+  loadError.value = false
   // Inside the tap: browsers only let audio start from one.
   if (playsRoots.value) {
     metronome.stop()
@@ -185,6 +202,20 @@ function takeOver() {
   if (playsRoots.value) player.stop()
   phase.value = 'share'
 }
+
+// The bass's player ends a take that has played through, or that couldn't load.
+watch(player.state, (state, previous) => {
+  if (!playsRoots.value || (phase.value !== 'counting_in' && phase.value !== 'running')) return
+  if (state === 'error') {
+    stopTimer()
+    countIn.value = 0
+    beatsPlayed.value = 0
+    loadError.value = true
+    phase.value = 'ready'
+  } else if (state === 'idle' && previous === 'playing') {
+    takeOver()
+  }
+})
 
 function chooseTempo(bpm: number) {
   if (phase.value === 'ready') tempo.value = clampTempo(bpm)
@@ -283,6 +314,7 @@ const meta = computed(() => {
         </div>
 
         <template v-if="phase === 'ready'">
+          <p v-if="loadError" class="text-sm text-danger" role="alert">{{ t('playAlongTake.loadError') }}</p>
           <p class="text-xs text-ink-muted">{{ t('sessionChord.readyHint') }}</p>
           <PracticeActionBar>
             <PrimaryButton data-test="start-take" data-primary-action class="h-12 w-full" @click="startTake">

@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
@@ -32,6 +32,8 @@ const player = {
   currentBar: ref<number | null>(null),
   beat: ref<number | null>(null),
   metronome: ref(false),
+  /** How far into the roots the audio is, as the player tells it: null while it loads. */
+  musicMs: vi.fn<() => number | null>(() => null),
   toggle: vi.fn(() => {
     player.state.value = 'playing'
   }),
@@ -121,9 +123,18 @@ async function playTheTake(wrapper: Awaited<ReturnType<typeof mountItem>>, bpm: 
   await vi.advanceTimersByTimeAsync(((4 + 20) * 60_000) / bpm + 500)
 }
 
+/** Starts a bass take and lets the player sound it through: its clock past the twentieth beat at 60 BPM. */
+async function playTheBassTake(wrapper: Awaited<ReturnType<typeof mountItem>>) {
+  await wrapper.get('[data-test="start-take"]').trigger('click')
+  player.musicMs.mockReturnValue(20_000)
+  await vi.advanceTimersByTimeAsync(100)
+}
+
 const shares = (wrapper: Awaited<ReturnType<typeof mountItem>>) => wrapper.findAll('[data-test="clean-share"]')
 
 describe('SessionChordChange', () => {
+  enableAutoUnmount(afterEach)
+
   beforeEach(() => {
     vi.useFakeTimers()
     clearEmbeddedDiagramCache()
@@ -138,6 +149,8 @@ describe('SessionChordChange', () => {
     player.metronome.value = false
     player.toggle.mockClear()
     player.stop.mockClear()
+    player.musicMs.mockReset()
+    player.musicMs.mockReturnValue(null)
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -323,8 +336,67 @@ describe('SessionChordChange', () => {
       await wrapper.get('[data-test="restart-take"]').trigger('click')
       expect(player.stop).toHaveBeenCalledTimes(1)
 
-      await playTheTake(wrapper, 60)
+      await playTheBassTake(wrapper)
       expect(player.stop).toHaveBeenCalledTimes(2)
+    })
+
+    it('holds the count-in while the roots load, so the take never runs ahead of what is heard', async () => {
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      player.state.value = 'loading'
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(wrapper.get('[data-test="count-in"]').text()).toBe('4')
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('10')
+      expect(shares(wrapper)).toHaveLength(0)
+      expect(player.stop).not.toHaveBeenCalled()
+    })
+
+    it('counts the count-in and the cycles by the beat the roots are at, not by the time since Start', async () => {
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      // Two seconds before the first root at 60 BPM: two beats of count-in left.
+      player.musicMs.mockReturnValue(-2_000)
+      await vi.advanceTimersByTimeAsync(100)
+      expect(wrapper.get('[data-test="count-in"]').text()).toBe('2')
+
+      player.musicMs.mockReturnValue(5_000)
+      await vi.advanceTimersByTimeAsync(100)
+      expect(wrapper.find('[data-test="count-in"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('8')
+
+      // Long past the take by the wall clock, but the roots are only at their nineteenth beat.
+      player.musicMs.mockReturnValue(19_000)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('1')
+      expect(shares(wrapper)).toHaveLength(0)
+      expect(player.stop).not.toHaveBeenCalled()
+    })
+
+    it('asks for the share when the roots have played through and the player stops by itself', async () => {
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      player.musicMs.mockReturnValue(19_900)
+      await vi.advanceTimersByTimeAsync(100)
+      player.state.value = 'idle'
+      await vi.advanceTimersByTimeAsync(100)
+
+      expect(shares(wrapper)).toHaveLength(4)
+    })
+
+    it('is ready again, saying the sound didn’t load, when the roots can’t load, and asks for no share', async () => {
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      player.state.value = 'error'
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
+      expect(wrapper.get('[role="alert"]').text()).toBe("The sound didn't load. Check your connection and try again.")
+      expect(shares(wrapper)).toHaveLength(0)
     })
 
     it('can only be skipped when the bass isn’t known', async () => {
@@ -346,7 +418,7 @@ describe('SessionChordChange', () => {
     it('asks how many changes the root rang clean, and sends the share', async () => {
       const wrapper = await mountItem(rootChange(), { bass: drillBass })
 
-      await playTheTake(wrapper, 60)
+      await playTheBassTake(wrapper)
       expect(wrapper.get('[data-test="change-meta"]').text()).toBe('How many changes rang clean, the root sounding?')
       await shares(wrapper)[1]!.trigger('click')
 
