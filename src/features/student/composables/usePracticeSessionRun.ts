@@ -710,7 +710,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: {
         response_type: 'generated_choice',
         way: answer.way,
-        ...(KEYED_BY_THE_QUESTION.includes(item.kind) ? { music_key: planned.music_key } : {}),
+        ...(KEYED_BY_THE_QUESTION.includes(item.kind) && planned.music_key ? { music_key: planned.music_key } : {}),
         options: answer.options,
         choice: answer.choice,
         latency_ms: Date.now() - (planned.playback ? (firstClipStartedAt ?? shownAt) : shownAt),

@@ -1129,6 +1129,34 @@ describe('usePracticeSessionRun', () => {
       expect(run.generatedAnswer.value?.correct).toBe(true)
     })
 
+    it('sends a chord quality heard with no key, graded by its quality', () => {
+      const quality: Item = {
+        item_key: 'heard_chord_quality:minor',
+        kind: 'heard_chord_quality',
+        rung: 'hear',
+        reason: 'new',
+        node_id: null,
+        level: 'new',
+        estimated_seconds: 20,
+        generated_choice: { ...BLANK, way: 'chord_quality_by_ear', music_key: null, options: opts('major', 'minor', 'dominant7') },
+      }
+      const run = usePracticeSessionRun(plan([quality], null))
+      run.start()
+      run.answerGenerated(
+        { way: 'chord_quality_by_ear', options: ['major', 'minor', 'dominant7'], choice: 'major' },
+        { question: { way: 'chord_quality_by_ear', key: null, quality: 'minor' }, catalog: {} },
+      )
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({
+        response_type: 'generated_choice',
+        way: 'chord_quality_by_ear',
+        options: ['major', 'minor', 'dominant7'],
+        choice: 'major',
+        latency_ms: 0,
+      })
+      expect(run.generatedAnswer.value).toEqual({ choice: 'major', right: 'minor', correct: false })
+    })
+
     it('takes only the first answer, and none asked another way or among options the grader rejects', () => {
       const run = usePracticeSessionRun(plan([numeral], null))
       run.start()
@@ -1768,7 +1796,8 @@ describe('usePracticeSessionRun', () => {
           start_note_value: 'quarters',
           target_tempo_bpm: 100,
           min_tempo_bpm: 60,
-          keys: TOUR_KEYS.map((key) => ({ music_key: key, clean: clean.includes(key), chart: [], voicings: [], chord_tones: [] })),
+          bass_pattern: null,
+          keys: TOUR_KEYS.map((key) => ({ music_key: key, clean: clean.includes(key), chart: [], voicings: [], window_start_fret: null, chord_tones: [] })),
           ...fields,
         },
       }

@@ -300,7 +300,7 @@ describe('useGeneratedQuestion', () => {
       expect(progression.bars).toEqual(['I', 'IV', 'V', 'I', null])
       expect(progression.subtitle).toBe('A cadence sets the key, then the chord')
       expect(progression.source.chords.map((diagram) => diagram.diagram_id)).toEqual((['G', 'C', 'D', 'G', 'Em'] as const).map(boxId))
-      expect(progression.source.chordInstrument.instrument_id).toBe(drillVoicings.C.diagram.instrument_id)
+      expect(progression.source.chordInstrument!.instrument_id).toBe(drillVoicings.C.diagram.instrument_id)
       expect(progression.source.bass).toBeNull()
       expect(progression.source.tempoBpm).toBe(70)
       expect(progression.source.noteValue).toBe('eighths')
@@ -391,6 +391,55 @@ describe('useGeneratedQuestion', () => {
     expect(question.grading.value).toEqual({
       question: { way: 'progression_by_number', key: 'G', progression: 'I-V-vi-IV' },
       catalog: { 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] }, 'I-vi-IV-V': { bars: ['I', 'vi', 'IV', 'V'] } },
+    })
+  })
+
+  describe('a heard chord quality', () => {
+    const quality = (asked: string, options: string[], bass = false) =>
+      item(`heard_chord_quality:${asked}`, {
+        way: 'chord_quality_by_ear',
+        music_key: null,
+        drawn_as: bass ? 'chord_symbols' : 'chord_boxes',
+        playback: { tempo_bpm: 70, note_value: 'quarters', bass_line: bass, bass_instrument_id: bass ? drillBass.instrument_id : null, bars: [{ chord: 'Am', numeral: null }] },
+        voicings: boxes('Am'),
+        options: chordOptions(...options),
+      })
+
+    it('plays one chord alone, names no chord and no key, and offers the qualities by name', async () => {
+      const question = setUp(quality('minor', ['major', 'minor', 'dominant7']))
+      await flushPromises()
+
+      expect(question.status.value).toBe('ready')
+      expect(question.prompt.value).toBe('Which kind of chord is it?')
+      const progression = question.view.value!.progression!
+      expect(progression.bars).toEqual([null])
+      expect(progression.subtitle).toBe('One chord, alone')
+      expect(progression.source.chords.map((diagram) => diagram.diagram_id)).toEqual([boxId('Am')])
+      expect(question.view.value!.context).toBeUndefined()
+      expect(question.view.value!.options.map((option) => option.label)).toEqual(['Major', 'Minor', 'With a seventh (7)'])
+    })
+
+    it('names diminished and augmented too once offered', async () => {
+      const question = setUp(quality('augmented', ['major', 'minor', 'dominant7', 'diminished', 'augmented']))
+      await flushPromises()
+
+      expect(question.view.value!.options.map((option) => option.label)).toEqual(['Major', 'Minor', 'With a seventh (7)', 'Diminished', 'Augmented'])
+    })
+
+    it('grades by the quality the item asks, in no key', () => {
+      const question = setUp(quality('dominant7', ['major', 'minor', 'dominant7']))
+
+      expect(question.grading.value).toEqual({ question: { way: 'chord_quality_by_ear', key: null, quality: 'dominant7' }, catalog: {} })
+    })
+
+    it('in Portuguese, names the qualities as a Brazilian musician does', async () => {
+      i18n.global.locale.value = 'pt-BR'
+      const question = setUp(quality('minor', ['major', 'minor', 'dominant7']))
+      await flushPromises()
+
+      expect(question.prompt.value).toBe('Que tipo de acorde é este?')
+      expect(question.view.value!.options.map((option) => option.label)).toEqual(['Maior', 'Menor', 'Com sétima (7)'])
+      i18n.global.locale.value = 'en'
     })
   })
 

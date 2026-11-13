@@ -312,7 +312,8 @@
       "chartToNumbers": "Reading charts",
       "numbersToChart": "Picking charts",
       "cadenceThenChord": "Chords by ear",
-      "progressionByNumber": "Progressions by ear"
+      "progressionByNumber": "Progressions by ear",
+      "chordQualityByEar": "Chord qualities by ear"
     },
     "nextUp": {
       "played": "You played {name} up to {tempo}.",
@@ -737,12 +738,21 @@
         "2": "Two chords, in a key you aren’t told",
         "3": "Three chords, in a key you aren’t told",
         "4": "Four chords, in a key you aren’t told"
-      }
+      },
+      "alone": "One chord, alone"
     },
     "chordsOfKey": "All four are chords of {key} major.",
     "keyOf": "Key of {key} major",
     "keyOfMinor": "Key of {key}",
-    "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
+    "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you.",
+    "chordQualityByEar": "Which kind of chord is it?",
+    "qualities": {
+      "major": "Major",
+      "minor": "Minor",
+      "dominant7": "With a seventh (7)",
+      "diminished": "Diminished",
+      "augmented": "Augmented"
+    }
   },
   "subjectPicker": {
     "title": "What to practise",

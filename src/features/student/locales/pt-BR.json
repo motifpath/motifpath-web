@@ -312,7 +312,8 @@
       "chartToNumbers": "Lendo cifras",
       "numbersToChart": "Escolhendo cifras",
       "cadenceThenChord": "Acordes de ouvido",
-      "progressionByNumber": "Progressões de ouvido"
+      "progressionByNumber": "Progressões de ouvido",
+      "chordQualityByEar": "Tipos de acorde de ouvido"
     },
     "nextUp": {
       "played": "Você tocou {name} até {tempo}.",
@@ -737,12 +738,21 @@
         "2": "Dois acordes, num tom que não é dito",
         "3": "Três acordes, num tom que não é dito",
         "4": "Quatro acordes, num tom que não é dito"
-      }
+      },
+      "alone": "Um acorde, sozinho"
     },
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
     "keyOfMinor": "Tom de {key}",
-    "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
+    "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você.",
+    "chordQualityByEar": "Que tipo de acorde é este?",
+    "qualities": {
+      "major": "Maior",
+      "minor": "Menor",
+      "dominant7": "Com sétima (7)",
+      "diminished": "Diminuto",
+      "augmented": "Aumentado"
+    }
   },
   "subjectPicker": {
     "title": "O que praticar",
