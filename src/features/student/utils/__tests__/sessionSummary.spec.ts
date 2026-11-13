@@ -144,12 +144,12 @@ describe('summaryRows', () => {
     const change = item('chord_change:am:c', 'chord_change')
     const outcomes = new Map<number, ItemOutcome>([
       [0, { kind: 'rated', rating: 'almost' }],
-      [1, { kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' }],
+      [1, { kind: 'changes', tempoBpm: 60, cleanSharePercent: 75, rating: 'almost' }],
     ])
 
     expect(summaryRows([am, change], outcomes)).toEqual([
       { key: 'chord_voicing:am', item: am, result: { kind: 'rated', rating: 'almost' }, good: true },
-      { key: 'chord_change:am:c', item: change, result: { kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' }, good: true },
+      { key: 'chord_change:am:c', item: change, result: { kind: 'changes', tempoBpm: 60, cleanSharePercent: 75, rating: 'almost' }, good: true },
     ])
   })
 

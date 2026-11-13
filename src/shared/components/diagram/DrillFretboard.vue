@@ -27,7 +27,9 @@ export interface CellMark extends CellPlace {
 
 /** A place marked for the student to play, by what it is in the chord. */
 export interface MarkedPlace extends CellPlace {
-  role: 'root' | 'third' | 'fifth'
+  role: 'root' | 'third' | 'fifth' | 'seventh'
+  /** Whether a third or fifth is above or below the root, for a board that marks both. */
+  position?: 'above' | 'below'
   /** The chord it belongs to, named when a board marks more than one. */
   chord?: string
 }
@@ -150,14 +152,34 @@ const ROLE_NAMES = {
   root: { alone: 'drillFretboard.root', of: 'drillFretboard.rootOf' },
   third: { alone: 'drillFretboard.third', of: 'drillFretboard.thirdOf' },
   fifth: { alone: 'drillFretboard.fifth', of: 'drillFretboard.fifthOf' },
+  seventh: { alone: 'drillFretboard.seventh', of: 'drillFretboard.seventhOf' },
 } as const
 
-/** What a marked place shows on its marker: R for a root, 3 for a third; a fifth shows nothing. */
-const ROLE_GLYPHS: Partial<Record<MarkedPlace['role'], string>> = { root: 'R', third: '3' }
+/** What a marked place shows on its marker: R for a root, 3 for a third, 7 for a seventh; a fifth shows nothing. */
+const ROLE_GLYPHS: Partial<Record<MarkedPlace['role'], string>> = { root: 'R', third: '3', seventh: '7' }
+
+/** A third or fifth said to be above or below the root, as the board marks both. */
+const POSITION_NAMES = {
+  third: { above: 'drillFretboard.thirdAbove', below: 'drillFretboard.thirdBelow' },
+  fifth: { above: 'drillFretboard.fifthAbove', below: 'drillFretboard.fifthBelow' },
+} as const
+
+/** A place's glyph: its role's, or 5 for a fifth said to be above or below, so it reads beside the 3s. */
+function glyphOf(place: MarkedPlace): string | undefined {
+  return place.role === 'fifth' && place.position ? '5' : ROLE_GLYPHS[place.role]
+}
+
+function roleName(place: MarkedPlace): string {
+  if ((place.role === 'third' || place.role === 'fifth') && place.position) {
+    const tone = t(POSITION_NAMES[place.role][place.position])
+    return place.chord ? t('drillFretboard.toneOf', { tone, chord: place.chord }) : tone
+  }
+  const names = ROLE_NAMES[place.role]
+  return place.chord ? t(names.of, { chord: place.chord }) : t(names.alone)
+}
 
 function placeLabel(place: MarkedPlace): string {
-  const names = ROLE_NAMES[place.role]
-  const role = place.chord ? t(names.of, { chord: place.chord }) : t(names.alone)
+  const role = roleName(place)
   const where = { role, string: place.string, fret: place.fret }
   return place.fret === 0 ? t('drillFretboard.markedOpen', where) : t('drillFretboard.markedPlace', where)
 }
@@ -224,6 +246,7 @@ function tap(place: CellPlace) {
         :data-string="place.string"
         :data-fret="place.fret"
         :data-role="place.role"
+        :data-position="place.position"
         role="img"
         :aria-label="placeLabel(place)"
       >
@@ -231,19 +254,18 @@ function tap(place: CellPlace) {
           :cx="cx(place.fret)"
           :cy="cy(place.string)"
           :r="MARKER_RADIUS"
-          :class="place.role === 'root' ? 'fill-ink' : 'fill-accent'"
-          class="stroke-surface"
+          :class="place.role === 'root' ? 'fill-ink stroke-surface' : place.position === 'below' ? 'fill-surface stroke-accent' : 'fill-accent stroke-surface'"
           stroke-width="2"
         />
         <text
-          v-if="ROLE_GLYPHS[place.role]"
+          v-if="glyphOf(place)"
           :x="cx(place.fret)"
           :y="cy(place.string) + 4"
           text-anchor="middle"
           aria-hidden="true"
           class="text-[11px] font-bold"
-          :class="place.role === 'root' ? 'fill-surface' : 'fill-accent-fg'"
-        >{{ ROLE_GLYPHS[place.role] }}</text>
+          :class="place.role === 'root' ? 'fill-surface' : place.position === 'below' ? 'fill-accent-text' : 'fill-accent-fg'"
+        >{{ glyphOf(place) }}</text>
       </g>
 
       <circle

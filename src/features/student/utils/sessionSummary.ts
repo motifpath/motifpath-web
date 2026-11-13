@@ -2,6 +2,7 @@ import type { components } from '@/api/generated/core-domain'
 import type { ItemOutcome } from '@/features/student/composables/usePracticeSessionRun'
 import { planRows } from '@/features/student/utils/planRows'
 import { speedOf } from '@/features/student/utils/tempoLadder'
+import type { CleanShare } from '@/features/student/utils/changeShare'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
@@ -13,8 +14,8 @@ export type SummaryResult =
   | { kind: 'played'; fastestBpm: number; fastestNoteValue: TempoNoteValue; rating: TakeRating }
   /** A single chord, or a root and fifth, as the student rated it. */
   | { kind: 'rated'; rating: TakeRating }
-  /** A minute of changes: the clean changes counted at the tempo played, and the rating they give. */
-  | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
+  /** A take of changes: the share of them clean at the tempo played, and the rating it gives. */
+  | { kind: 'changes'; tempoBpm: number; cleanSharePercent: CleanShare; rating: TakeRating }
   /** A progression key tour: the keys clean at the tour tempo, in quarters, when its last take was rated. */
   | { kind: 'toured'; cleanKeys: number; tourBpm: number }
   /** A guide tone: the bars its best take hit, of its bars. */

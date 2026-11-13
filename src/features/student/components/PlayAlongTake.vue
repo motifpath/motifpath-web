@@ -22,7 +22,7 @@ import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
 import SelfRating from '@/features/student/components/SelfRating.vue'
-import TempoControl from '@/shared/components/TempoControl.vue'
+import MetronomeRow from '@/shared/components/MetronomeRow.vue'
 import AppButton from '@/shared/components/AppButton.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
@@ -273,7 +273,9 @@ const meta = computed(() => {
           </div>
         </PracticeBreakout>
 
-        <TempoControl
+        <MetronomeRow
+          :beats="timeSignature?.beats ?? 4"
+          :lit="player.beat.value"
           :tempo="tempo"
           :slowest="slowestTempo"
           :goal="goalMark"

@@ -1,7 +1,7 @@
 /**
  * Generated questions asked among options the server planned: a numeral's chord or a chord's
  * numeral in a key, a chord's function, a progression read as a chart, a chord or a progression
- * heard, a heard chord's numeral named by sight. Grades exactly as the server does, so instant feedback never contradicts the record: the
+ * heard, a heard chord's numeral named by sight, a chord's quality heard in no key. Grades exactly as the server does, so instant feedback never contradicts the record: the
  * right answer comes from the key, the numeral or the progression; every option must be a possible
  * answer, none twice, and the right answer and the pick must be among them.
  */
@@ -32,19 +32,24 @@ const WAYS: GeneratedWay[] = [
   'cadence_then_chord',
   'progression_by_number',
   'see_then_name',
+  'chord_quality_by_ear',
 ]
+
+/** The qualities a chord heard alone is named by, in the order its options show them. */
+export const HEARD_CHORD_QUALITIES = ['major', 'minor', 'dominant7', 'diminished', 'augmented'] as const
 
 /** Whether a value read from elsewhere is a way a generated question is asked. */
 export function isGeneratedWay(value: string): value is GeneratedWay {
   return WAYS.some((way) => way === value)
 }
 
-/** What a question asks: its way, its key, and its numeral or progression (by catalog key). */
+/** What a question asks: its way, its key (none for a chord's quality), and its numeral, progression (by catalog key) or quality. */
 export interface GeneratedQuestion {
   way: GeneratedWay
-  key: string
+  key: string | null
   numeral?: string
   progression?: string
+  quality?: string
 }
 
 /** The drill progressions the options are checked against, by key, each read in its mode (major when it says none). */
@@ -72,7 +77,16 @@ function chordsOfTheKey(key: number): Map<string, string> {
   return chords
 }
 
+/** A chord's quality heard alone, in no key: every option a quality, the item's the right one. */
+function qualitySpaceOf(question: GeneratedQuestion): AnswerSpace | null {
+  const qualities: readonly string[] = HEARD_CHORD_QUALITIES
+  if (question.key !== null || question.quality === undefined || !qualities.includes(question.quality)) return null
+  return { identify: (o) => (qualities.includes(o) ? o : null), right: question.quality }
+}
+
 function answerSpaceOf(question: GeneratedQuestion, catalog: ProgressionCatalog): AnswerSpace | null {
+  if (question.way === 'chord_quality_by_ear') return qualitySpaceOf(question)
+  if (question.key === null) return null
   const asked = musicKeyOf(question.key)
   const progression = question.progression === undefined ? undefined : catalog[question.progression]
   // A progression is asked in a key of its mode; any other question in a major key.
@@ -155,7 +169,7 @@ export function gradeGeneratedChoice(question: GeneratedQuestion, catalog: Progr
 
 /** Whether the asked chord is the only option with its function. */
 function oneChordWithTheFunction(question: GeneratedQuestion, chords: string[]): boolean {
-  const key = pitchClassOf(question.key)
+  const key = question.key === null ? null : pitchClassOf(question.key)
   if (key === null) return false
   const numerals = chordsOfTheKey(key)
   const asked = NUMERAL_FUNCTION[question.numeral ?? '']

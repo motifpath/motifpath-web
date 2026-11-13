@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import { expect } from 'storybook/test'
 
-import { BASS_TUNING, chordDiagramHandler, chordInstrumentsHandler } from '@/features/student/testing/chordItems'
+import { chordDiagramHandler, chordInstrumentsHandler } from '@/features/student/testing/chordItems'
 import { TOUR_IN_G, tourItem } from '@/features/student/testing/tourItems'
+import { drillBass } from '@/shared/testUtils/drill'
 import { failing } from '@/shared/testUtils/msw/handlers'
 
 import SessionProgressionKeys from './SessionProgressionKeys.vue'
@@ -10,7 +11,7 @@ import SessionProgressionKeys from './SessionProgressionKeys.vue'
 const meta = {
   title: 'Practice/SessionProgressionKeys',
   component: SessionProgressionKeys,
-  args: { item: tourItem(), tempo: 84, noteValue: 'quarters', takesLeft: 3, takesTotal: 3, tour: TOUR_IN_G, tuning: null },
+  args: { item: tourItem(), tempo: 84, noteValue: 'quarters', takesLeft: 3, takesTotal: 3, tour: TOUR_IN_G, bass: null },
   parameters: { msw: { handlers: { diagram: chordDiagramHandler, instruments: chordInstrumentsHandler } } },
   render: (args) => ({
     components: { SessionProgressionKeys },
@@ -40,11 +41,11 @@ export const ChordBoxOnDemand: Story = {
 
 /** On bass, a chord's root, third and fifth are marked on the board. */
 export const BassChordTones: Story = {
-  args: { item: tourItem({ onBass: true }), tuning: BASS_TUNING },
+  args: { item: tourItem({ onBass: true, pattern: 'root_third_fifth_seventh' }), bass: drillBass },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /root, 3rd and 5th of em|terça e a quinta de em/i }))
     await expect(canvas.getByRole('heading', { name: /^Em:/ })).toBeVisible()
-    await expect(canvas.getByRole('img', { name: /^(third|terça),/i })).toBeVisible()
+    await expect(canvas.getByRole('img', { name: /^(third above|terça acima),/i })).toBeVisible()
   },
 }
 

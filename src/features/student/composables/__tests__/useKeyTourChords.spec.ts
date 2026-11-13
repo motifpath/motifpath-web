@@ -36,6 +36,7 @@ function tour(): Item {
     clean: false,
     chart,
     voicings: [...new Set(chart)].map((chord) => ({ chord, diagram_id: boxId(chord) })),
+    window_start_fret: null,
     chord_tones: [],
   })
   return {
@@ -56,6 +57,7 @@ function tour(): Item {
       start_note_value: 'quarters',
       target_tempo_bpm: 100,
       min_tempo_bpm: 60,
+      bass_pattern: null,
       keys: [key('C', ['C', 'G', 'Am', 'C']), key('G', ['G', 'D', 'Em', 'C'])],
     },
   }

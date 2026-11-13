@@ -9,6 +9,7 @@ import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { fetchInstruments } from '@/shared/composables/useListInstruments'
 import { useProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { HEARD_CHORD_QUALITIES } from '@/shared/utils/generatedChoice'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { musicKeyMessage, numeralLabel } from '@/shared/utils/musicKey'
 import { musicKeyOf } from '@/shared/utils/harmony'
@@ -114,12 +115,21 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
     { immediate: true },
   )
 
-  const keyName = computed(() => t(musicKeyMessage(question.value.music_key)))
+  /** The key the question is asked in, by name; empty for one asked in no key, as a chord's quality is. */
+  const keyName = computed(() => (question.value.music_key === null ? '' : t(musicKeyMessage(question.value.music_key))))
 
   /** The key a chart is read in: a minor key's name already says its mode. */
-  const chartKey = computed(() =>
-    t(musicKeyOf(question.value.music_key)?.mode === 'minor' ? 'sessionGeneratedChoice.keyOfMinor' : 'sessionGeneratedChoice.keyOf', { key: keyName.value }),
-  )
+  const chartKey = computed(() => {
+    const key = question.value.music_key
+    const minor = key !== null && musicKeyOf(key)?.mode === 'minor'
+    return t(minor ? 'sessionGeneratedChoice.keyOfMinor' : 'sessionGeneratedChoice.keyOf', { key: keyName.value })
+  })
+
+  /** A heard quality's option, named; a value that isn't one is shown as sent. */
+  function qualityName(value: string): string {
+    const known = HEARD_CHORD_QUALITIES.find((quality) => quality === value)
+    return known ? t(`sessionGeneratedChoice.qualities.${known}`) : value
+  }
 
   /** A chord as the question draws it: a box on a guitar reading, a symbol otherwise. */
   function chordOf(symbol: string): DrillChord {
@@ -148,13 +158,16 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
         return t('sessionGeneratedChoice.cadenceThenChord')
       case 'progression_by_number':
         return t('sessionGeneratedChoice.progressionByNumber')
+      case 'chord_quality_by_ear':
+        return t('sessionGeneratedChoice.chordQualityByEar')
       default:
         return ''
     }
   })
 
-  /** What a heard question says it plays: a cadence, the tonic alone, or a progression of its bars' chords in a key not told. */
+  /** What a heard question says it plays: a cadence, the tonic alone, a progression of its bars' chords in a key not told, or one chord alone. */
   function heardSubtitle(heard: Playback): string {
+    if (question.value.way === 'chord_quality_by_ear') return t('sessionGeneratedChoice.heard.alone')
     if (question.value.way === 'progression_by_number') return t(`sessionGeneratedChoice.heard.progression.${heardBars(heard.bars.length)}`)
     const given = heard.bars.filter((bar) => bar.numeral !== null).length
     return given > 1 ? t('sessionGeneratedChoice.heard.cadence') : t('sessionGeneratedChoice.heard.tonic')
@@ -180,7 +193,7 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
         tempoBpm: heard.tempo_bpm,
         noteValue: heard.note_value,
       },
-      bars: heard.bars.map((bar) => (bar.numeral === null ? null : numeralLabel(bar.numeral))),
+      bars: heard.bars.map((bar) => (bar.numeral ? numeralLabel(bar.numeral) : null)),
       subtitle: heardSubtitle(heard),
     }
   }
@@ -199,6 +212,8 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
           return { value: option.value, label: numeralLabel(option.value) }
         case 'numbers_to_chart':
           return { value: option.value, label: option.value, chart: option.chart.map(chordOf) }
+        case 'chord_quality_by_ear':
+          return { value: option.value, label: qualityName(option.value) }
         default:
           return { value: option.value, label: option.name ?? option.value }
       }
@@ -219,13 +234,14 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
   /**
    * The question as the grader reads it: its numeral or progression comes from the item it asks. A
    * diatonic chord or chord function names its key and numeral; a heard chord only its numeral,
-   * and a progression only its key in the catalog.
+   * a progression only its key in the catalog, and a heard quality only its quality, asked in no key.
    */
   const grading = computed<GeneratedChoiceGrading>(() => {
     const { kind, item_key: itemKey } = toValue(item)
     const [, first, second] = itemKey.split(':')
     const q = question.value
     if (isProgression.value) return { question: { way: q.way, key: q.music_key, progression: first }, catalog: catalog.value }
+    if (kind === 'heard_chord_quality') return { question: { way: q.way, key: null, quality: first }, catalog: {} }
     const asked: GeneratedQuestion = { way: q.way, key: q.music_key, numeral: kind === 'heard_chord' ? first : second }
     return { question: asked, catalog: {} }
   })

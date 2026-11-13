@@ -60,3 +60,19 @@ export function bassLineSteps(roots: string[], bassTuning: string[]): PlaybackSt
     return Array.from({ length: BEATS_PER_BAR }, () => beat)
   })
 }
+
+/**
+ * A bass line of the exact notes asked, bar by bar: each bar's notes share it evenly (one fills
+ * it, two are halves, four quarters), each lit as its bar. A bar with no note rests, so the bars
+ * after it stay in time.
+ */
+export function bassNoteSteps(bars: number[][]): PlaybackStep[] {
+  return bars.flatMap((notes, bar) => {
+    if (notes.length === 0) return [{ value: BAR, positionIds: [barId(bar)], notes: [] }]
+    return notes.map((midi) => ({
+      value: BAR / notes.length,
+      positionIds: [barId(bar)],
+      notes: [{ positionId: barId(bar), midi, offset: 0 }],
+    }))
+  })
+}

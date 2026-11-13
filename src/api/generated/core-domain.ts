@@ -8462,7 +8462,7 @@ export interface components {
          *     chord_voicing, chord_change, root_fifth, root_change, progression_keys, guide_tone and
          *     song is present, matching kind:
          *     generated_choice for a diatonic chord, a chord function, a chart progression, a heard
-         *     chord or a heard progression.
+         *     chord, a heard progression or a heard chord quality.
          */
         PracticeSessionItem: {
             item_key: components["schemas"]["PracticeItemKey"];
@@ -8679,9 +8679,12 @@ export interface components {
             learning_days_last_7: number;
             /**
              * @description Whole minutes practised in sessions that started on the last 7 calendar days,
-             *     today included, in the given time zone, on any instrument or without one. Each
-             *     session counts from its start to its last practice event, including a session
-             *     left early or abandoned. The sum is rounded down to whole minutes.
+             *     today included, in the given time zone, on any instrument or without one,
+             *     including a session left early or abandoned. A session counts only the time it was
+             *     visible to the student: the sum of its practice events' visible_ms, where an event
+             *     without one counts the gap since the session's previous event (or its start),
+             *     never more than 2 minutes; and never more than its start to its last practice
+             *     event. The sum is rounded down to whole minutes.
              */
             minutes_practised_last_7: number;
             /**
@@ -10421,9 +10424,11 @@ export interface components {
          *       picked each time.
          *     - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
          *       ear. The key is picked each time.
+         *     - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+         *       alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
          *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
          *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-         *       layout, cleanly, untimed.
+         *       layout, cleanly, a half note each at a tempo.
          *     - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
          *       chords' roots on a bass layout.
          *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
@@ -10451,7 +10456,7 @@ export interface components {
          *     is added with its key scheme, grader and golden cases.
          * @enum {string}
          */
-        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "progression_keys" | "song";
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "heard_chord_quality" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "progression_keys" | "song";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
          *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
@@ -10529,13 +10534,15 @@ export interface components {
          *     numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
          *     a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
          *     progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
-         *     numeral. A diatonic chord is asked numeral_to_chord or
+         *     numeral; chord_quality_by_ear = one chord plays alone, pick its quality. A diatonic chord is
+         *     asked numeral_to_chord or
          *     chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
          *     progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
-         *     see_then_name; a heard progression progression_by_number.
+         *     see_then_name; a heard progression progression_by_number; a heard chord quality
+         *     chord_quality_by_ear.
          * @enum {string}
          */
-        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name";
+        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name" | "chord_quality_by_ear";
         /**
          * @description A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
          *     are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
@@ -10543,7 +10550,7 @@ export interface components {
          *     response, the key a question was asked in or a take was played in when
          *     its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
          *     tone or a progression key tour; absent in a response to any other item. A planned question
-         *     always names its key.
+         *     names its key, except a heard chord quality, asked in none.
          * @enum {string}
          */
         MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B" | "Cm" | "Dbm" | "Dm" | "Ebm" | "Em" | "Fm" | "F#m" | "Gm" | "Abm" | "Am" | "Bbm" | "Bm";
@@ -10572,7 +10579,7 @@ export interface components {
         GeneratedChordDrawing: "chord_boxes" | "chord_symbols";
         /**
          * @description The sound of a question asked by ear: bars in 4/4, one chord a bar, played in the voicings
-         *     the question lists. The student may change the tempo and the note value before or between
+         *     the question lists. A chord quality plays one bar: its chord alone. The student may change the tempo and the note value before or between
          *     plays; the answer is never graded on either. A note value is a speed factor: eighths play
          *     two chords a bar, at twice the speed.
          */
@@ -10602,7 +10609,8 @@ export interface components {
              * @description The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
              *     numerals, or only I with its numeral once the student is accurate on the item, then the
              *     asked chord with no numeral. progression_by_number: the progression's bars, 2 to 4, none
-             *     with a numeral.
+             *     with a numeral. chord_quality_by_ear: one bar, the chord whose quality is asked, with no
+             *     numeral.
              */
             bars: {
                 /**
@@ -10623,12 +10631,14 @@ export interface components {
          *     parts the way needs are present; the others are null or empty. Nothing in it marks the
          *     answer, and the prompt never names it: the client shows the options as given and sends
          *     back the way, the options as shown and the pick, with music_key when the item is a chart
-         *     progression, a heard chord or a heard progression. A question asked by ear also carries
-         *     the playback the client sounds before the options can be picked.
+         *     progression, a heard chord or a heard progression (never for a heard chord quality, which is
+         *     asked in no key; its music_key is null). A question asked by ear also carries the playback
+         *     the client sounds before the options can be picked.
          */
         GeneratedChoiceQuestion: {
             way: components["schemas"]["GeneratedChoiceWay"];
-            music_key: components["schemas"]["MusicKey"];
+            /** @description The key the question is asked in; null for a heard chord quality only. */
+            music_key: components["schemas"]["MusicKey"] | null;
             /** @description The numeral asked about, for numeral_to_chord. Null for every other way. */
             numeral: components["schemas"]["ChordNumeral"] | null;
             /**
@@ -10661,19 +10671,25 @@ export interface components {
              *     progression's wrong answers are drill progressions of its length and mode, then, when
              *     those are too few, progressions the server makes up by changing one of its bars. A
              *     made-up one is offered as the progression it would be if an admin created it: its key,
-             *     its name (its numerals joined by –) and its chart.
+             *     its name (its numerals joined by –) and its chart. A heard chord quality offers major,
+             *     minor and dominant7 until the student is fluent on the item, then diminished and
+             *     augmented too, in that order rather than shuffled.
              */
             options: {
                 /**
                  * @description The option as the response sends it back: a chord symbol, a numeral, a function, a
-                 *     progression key, or a chart (its chord symbols one per bar, separated by single
-                 *     spaces), by way.
+                 *     progression key, a chart (its chord symbols one per bar, separated by single
+                 *     spaces), or a chord quality (major, minor, dominant7, diminished, augmented), by
+                 *     way.
                  */
                 value: string;
                 /**
                  * @description The option's name in the student's language where its value is a key: a function
-                 *     ("Dominant — pulls home") or a progression ("I – V – vi – IV"). Null for a chord, a
-                 *     numeral or a chart, which are shown as they are.
+                 *     ("Dominant — pulls home"), a progression, or a chord quality ("Menor"). A
+                 *     progression is named by its catalog name, except for progression_by_number,
+                 *     where it is named by every bar's numeral in order, joined by – ("IV–V–I–I"), so
+                 *     the numerals shown always match the bars heard. Null for a chord, a numeral or a
+                 *     chart, which are shown as they are.
                  */
                 name: string | null;
                 /**
@@ -10699,8 +10715,8 @@ export interface components {
                 diagram_id: string;
             }[];
             /**
-             * @description What the client plays before the options can be picked, for cadence_then_chord and
-             *     progression_by_number. Null for every other way.
+             * @description What the client plays before the options can be picked, for cadence_then_chord,
+             *     progression_by_number and chord_quality_by_ear. Null for every other way.
              */
             playback?: components["schemas"]["GeneratedChoicePlayback"] | null;
         };
@@ -10718,33 +10734,37 @@ export interface components {
             chord_symbol: string;
         };
         /**
-         * @description The tempo ladder and the student's record for a minute of changes between two chords (or
-         *     two roots), one change on every beat, so a tempo is also the number of changes the minute
-         *     asks for. The take sends the tempo played and the clean changes counted.
+         * @description The tempo ladder and the student's record for a take of changes between two chords (or two
+         *     roots): ten cycles, one cycle being from, to and back, one change on every beat, so 20
+         *     changes after a bar of count-in. When it ends the student picks the share of changes that
+         *     rang clean (25, 50, 75 or 100 %); the take sends the tempo played and that share.
          */
-        ChangeMinute: {
+        ChangeTake: {
             /**
-             * @description The tempo to start the minute at, from the ladder: the tempo of the item's last minute,
-             *     5 higher after two clean minutes in a row and 5 lower after a struggled one, never below
+             * @description The cycles one take plays, from the catalog.
+             * @enum {integer}
+             */
+            cycles: 10;
+            /**
+             * @description The tempo to start the take at, from the ladder: the tempo of the item's last take,
+             *     5 higher after two clean takes in a row and 5 lower after a struggled one, never below
              *     20; 40 when the item was never played. The student may set another before starting.
              */
             start_tempo_bpm: number;
-            /** @description The clean changes a minute that count as fully fluent, the same for every pair. */
-            target_changes_per_minute: number;
             /**
-             * @description The most clean changes the student counted in a clean minute since their latest teacher
-             *     review. Null when they have no clean minute yet.
+             * @description The tempo a clean take counts as fully fluent at, every change clean, the same for every
+             *     pair.
              */
-            best_clean_changes_per_minute: number | null;
+            target_tempo_bpm: number;
             /**
-             * @description The clean changes counted in the item's last minute, where the count starts. Null when
-             *     the item was never played.
+             * @description The fastest tempo the student played a clean take at since their latest teacher review.
+             *     Null when they have no clean take yet.
              */
-            last_changes_per_minute: number | null;
+            best_clean_tempo_bpm: number | null;
         };
         /**
-         * @description A minute of changes between two chords, back and forth (kind chord_change). Both chords are
-         *     named and drawn as their chord boxes.
+         * @description Changes between two chords, back and forth, ten cycles at a tempo (kind chord_change). Both
+         *     chords are named and drawn as their chord boxes.
          */
         PlannedChordChange: {
             /**
@@ -10761,7 +10781,7 @@ export interface components {
             from_chord_symbol: string;
             /** @description The second chord's symbol. */
             to_chord_symbol: string;
-            minute: components["schemas"]["ChangeMinute"];
+            take: components["schemas"]["ChangeTake"];
         };
         /** @description One place on a fretboard layout. */
         FretPlace: {
@@ -10771,8 +10791,11 @@ export interface components {
             fret: number;
         };
         /**
-         * @description A chord's root and fifth to play on a bass layout and rate (kind root_fifth). Both places
-         *     are marked: playing them is the skill. The take is rated by the student and has no measure.
+         * @description A chord's root and fifth to play on a bass layout and rate (kind root_fifth). The root and
+         *     both fifths, above and below it, are marked: playing them is the skill. The take plays the
+         *     root then the fifth above it, a half note each, in the bass's voice under the metronome,
+         *     over and over until the student stops it; the student rates it, and the take sends the
+         *     tempo it was played at.
          */
         PlannedRootFifth: {
             /**
@@ -10783,11 +10806,30 @@ export interface components {
             /** @description The chord's symbol, such as Am. */
             chord_symbol: string;
             root: components["schemas"]["FretPlace"];
+            /** @description The fifth above the root, the one played. */
             fifth: components["schemas"]["FretPlace"];
+            /**
+             * @description The fifth below the root, marked and not played, inside window_start_fret's window;
+             *     null when no string reaches it there.
+             */
+            fifth_below: components["schemas"]["FretPlace"] | null;
+            /**
+             * @description The lowest fret of the five-fret window every place is in (frets window_start_fret to
+             *     window_start_fret + 4, open strings counting as fret 0): the plan picks it from 0 to 9
+             *     each time, so the root is not always at the bottom of the neck. The root is on the
+             *     lowest string that holds it in the window with the fifth above it there too.
+             */
+            window_start_fret: number;
+            /**
+             * @description The tempo the take starts at, in quarters, from the catalog: the student may set another
+             *     before starting.
+             */
+            start_tempo_bpm: number;
         };
         /**
-         * @description A minute of changes between two chords' roots on a bass layout (kind root_change). Both
-         *     roots are marked.
+         * @description Changes between two chords' roots on a bass layout, ten cycles at a tempo (kind
+         *     root_change). Both roots are marked, inside one five-fret window, and the take sounds each
+         *     root in the bass's voice on its beat, with the metronome; no chord sounds.
          */
         PlannedRootChange: {
             /**
@@ -10801,7 +10843,40 @@ export interface components {
             to_chord_symbol: string;
             from_root: components["schemas"]["FretPlace"];
             to_root: components["schemas"]["FretPlace"];
-            minute: components["schemas"]["ChangeMinute"];
+            /** @description The lowest fret of the five-fret window both roots are in, picked from 0 to 9 each time. */
+            window_start_fret: number;
+            take: components["schemas"]["ChangeTake"];
+        };
+        /**
+         * @description What a bass key tour plays on every bar of 4/4, chosen by the student's level on the tour:
+         *     root = the root, a whole note (new, learning); root_fifth = the root then the fifth above,
+         *     a half note each (accurate); root_third_fifth_third = root, third, fifth, third, quarters
+         *     (fluent); root_third_fifth_seventh = root, third, fifth, seventh, quarters (retained). The
+         *     take sounds exactly these notes in the bass's voice, and no chords.
+         * @enum {string}
+         */
+        BassPattern: "root" | "root_fifth" | "root_third_fifth_third" | "root_third_fifth_seventh";
+        /**
+         * @description Where a chord's tones are on a bass layout, inside a five-fret window, for the board that
+         *     shows them: the root, and the third and fifth both above and below it, so the student sees
+         *     each interval up and down. A place is null when no string reaches it inside the window.
+         *     The seventh is the chord's own (the minor seventh on a dominant seventh, the major seventh
+         *     on a major seventh, the key's seventh on a triad) and is null unless the pattern plays it.
+         */
+        BassChordTones: {
+            /** @description The chord symbol, as it appears in the chart. */
+            chord: string;
+            root: components["schemas"]["FretPlace"];
+            /** @description The third above the root. */
+            third_above: components["schemas"]["FretPlace"] | null;
+            /** @description The third an octave lower, below the root. */
+            third_below: components["schemas"]["FretPlace"] | null;
+            /** @description The fifth above the root. */
+            fifth_above: components["schemas"]["FretPlace"] | null;
+            /** @description The fifth an octave lower, below the root. */
+            fifth_below: components["schemas"]["FretPlace"] | null;
+            /** @description The seventh above the root, for the root_third_fifth_seventh pattern only. */
+            seventh: components["schemas"]["FretPlace"] | null;
         };
         /**
          * @description A progression played along with, key after key around the cycle of fourths (kind
@@ -10818,8 +10893,9 @@ export interface components {
             /**
              * Format: uuid
              * @description The instrument whose fretboard layout the tour is played on: guitar (chord symbols, chord
-             *     boxes on demand) or electric bass (chord symbols and each chord's root, third and fifth
-             *     on the board).
+             *     boxes on demand, the backing strumming each chord) or electric bass (chord symbols, each
+             *     chord's tones on the board, and a backing that sounds only bass_pattern's notes in the
+             *     bass's voice, never a chord).
              */
             layout_instrument_id: string;
             /** @description The progression played. */
@@ -10845,6 +10921,11 @@ export interface components {
              */
             tour_tempo_bpm: number;
             start_note_value: components["schemas"]["practice_NoteValue"];
+            /**
+             * @description On bass, what every bar of a take plays, by the student's level on the tour. Null on
+             *     guitar.
+             */
+            bass_pattern: components["schemas"]["BassPattern"] | null;
             /** @description The tempo the tour aims for, in quarters, the same for every progression. */
             target_tempo_bpm: number;
             /** @description The slowest tempo a struggle lowers the tour to, 60% of the target. */
@@ -10868,24 +10949,23 @@ export interface components {
                     chord: string;
                     /**
                      * Format: uuid
-                     * @description The chord catalog voicing the backing sounds, and the box shown on demand on
-                     *     guitar: the chord's open voicing if the catalog has one, else its
-                     *     lowest-difficulty voicing.
+                     * @description The chord catalog voicing the backing sounds on guitar, and the box shown
+                     *     on demand: the chord's open voicing if the catalog has one, else its
+                     *     lowest-difficulty voicing. Never sounded on bass.
                      */
                     diagram_id: string;
                 }[];
                 /**
-                 * @description On a bass layout, the places of each distinct chord's root, third and fifth, each
-                 *     at its lowest fret, then its lowest string, inside frets 0–5. A dominant seventh
-                 *     keeps its root, third and fifth. Empty on guitar.
+                 * @description On bass, the lowest fret of the five-fret window this key's tones are in, picked
+                 *     from 0 to 9 when the tour is planned, so a tour doesn't always start at the open
+                 *     strings. Null on guitar.
                  */
-                chord_tones: {
-                    /** @description The chord symbol, as it appears in chart. */
-                    chord: string;
-                    root: components["schemas"]["FretPlace"];
-                    third: components["schemas"]["FretPlace"];
-                    fifth: components["schemas"]["FretPlace"];
-                }[];
+                window_start_fret: number | null;
+                /**
+                 * @description On a bass layout, the tones of each distinct chord of chart inside the key's
+                 *     window, the root on the lowest string that holds it there. Empty on guitar.
+                 */
+                chord_tones: components["schemas"]["BassChordTones"][];
             }[];
         };
         /**
@@ -11418,11 +11498,13 @@ export type SchemaGeneratedChordDrawing = components['schemas']['GeneratedChordD
 export type SchemaGeneratedChoicePlayback = components['schemas']['GeneratedChoicePlayback'];
 export type SchemaGeneratedChoiceQuestion = components['schemas']['GeneratedChoiceQuestion'];
 export type SchemaPlannedChordVoicing = components['schemas']['PlannedChordVoicing'];
-export type SchemaChangeMinute = components['schemas']['ChangeMinute'];
+export type SchemaChangeTake = components['schemas']['ChangeTake'];
 export type SchemaPlannedChordChange = components['schemas']['PlannedChordChange'];
 export type SchemaFretPlace = components['schemas']['FretPlace'];
 export type SchemaPlannedRootFifth = components['schemas']['PlannedRootFifth'];
 export type SchemaPlannedRootChange = components['schemas']['PlannedRootChange'];
+export type SchemaBassPattern = components['schemas']['BassPattern'];
+export type SchemaBassChordTones = components['schemas']['BassChordTones'];
 export type SchemaPlannedProgressionKeys = components['schemas']['PlannedProgressionKeys'];
 export type SchemaPlannedGuideTone = components['schemas']['PlannedGuideTone'];
 export type SchemaPlannedSong = components['schemas']['PlannedSong'];

@@ -139,6 +139,34 @@ describe('useProgressionPlayback', () => {
     expect(line[0]!.time).toBeCloseTo(sounding('acoustic-guitar')[0]!.time)
   })
 
+  it('sounds only the bass notes it is given when no chord sounds, in the bass’s voice, the click on their bars', async () => {
+    const { player } = setup({ chords: [], chordInstrument: null, bass: { instrument: drillBass, bars: [[45, 52], [45, 52]] }, countInBars: 1 })
+    player.metronome.value = true
+    await startPlaying(player)
+
+    expect(sounding('acoustic-guitar')).toEqual([])
+    const first = audio.clicks[0]!.time
+    // 60 BPM: a bar of count-in, then each bar's root and fifth, a half note each.
+    expect(sounding('electric-bass').map((note) => [note.midi, note.time - first])).toEqual([
+      [45, 4],
+      [52, 6],
+      [45, 8],
+      [52, 10],
+    ])
+    expect(audio.clicks).toHaveLength(12)
+    expect(player.lengthMs.value).toBe(12_000)
+  })
+
+  it('needs only the bass’s voice when no chord sounds', async () => {
+    const { player } = setup({ chords: [], chordInstrument: null, bass: { instrument: drillBass, bars: [[45]] } })
+    await vi.waitFor(() => expect(player.status.value).toBe('ready'))
+
+    expect(GET).toHaveBeenCalled()
+    await startPlaying(player)
+    frameAt(audio.now + 2)
+    expect(player.currentBar.value).toBe(0)
+  })
+
   it('says how long one play lasts, at the tempo and note value it plays at', () => {
     const { player } = setup()
     // Four bars of 4/4 at 60 BPM.
@@ -234,6 +262,32 @@ describe('useProgressionPlayback', () => {
     // 60 BPM: four clicks of count-in, then the two bars of chords.
     expect(clicks).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
     expect(sounding('acoustic-guitar')[0]!.time - audio.clicks[0]!.time).toBeCloseTo(4)
+  })
+
+  it('says which beat of the bar its click is on while it plays, for the beat dots', async () => {
+    const { player } = setup({ chords: [C, Am].map((chord) => chord.diagram), countInBars: 1 })
+    player.metronome.value = true
+    await startPlaying(player)
+    const first = audio.clicks[0]!.time
+
+    frameAt(first + 0.5)
+    expect(player.beat.value).toBe(0)
+    frameAt(first + 2.2)
+    expect(player.beat.value).toBe(2)
+    frameAt(first + 4.1)
+    expect(player.beat.value).toBe(0)
+    frameAt(first + 7.5)
+    expect(player.beat.value).toBe(3)
+    player.stop()
+    expect(player.beat.value).toBeNull()
+  })
+
+  it('lights no beat while its metronome is off', async () => {
+    const { player } = setup({ countInBars: 1 })
+    await startPlaying(player)
+
+    frameAt(audio.now + 1.5)
+    expect(player.beat.value).toBeNull()
   })
 
   it('tells how far into the music it is, from the first chord’s downbeat after the count-in', async () => {
