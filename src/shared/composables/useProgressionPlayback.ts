@@ -3,10 +3,11 @@ import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
+import { createClickCounter } from '@/shared/audio/clickCounter'
 import { createClickSink } from '@/shared/audio/clickSink'
 import { claimPlayback, releasePlayback } from '@/shared/audio/exclusivePlayback'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
-import type { ClickSink, PlaybackRun } from '@/shared/audio/playbackRun'
+import type { PlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackStep } from '@/shared/audio/timeline'
 import { barOfPositionIds, bassLineSteps, bassNoteSteps, chordSteps } from '@/shared/audio/progressionSteps'
 import { fetchVoiceSamples } from '@/shared/audio/samplePrefetch'
@@ -160,32 +161,8 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   let check = 0
   /** When the first chord's bar starts on the audio clock, after the count-in; null while nothing plays. */
   let musicStart: number | null = null
-  /** The clicks scheduled, each with its beat of the bar, in time order; a click cancelled leaves it. */
-  let clicks: { time: number; beat: number }[] = []
-
-  /** The latest click scheduled at or before `heard`; none before the first. */
-  function lastClickBy(heard: number) {
-    for (let i = clicks.length - 1; i >= 0; i--) if (clicks[i]!.time <= heard) return clicks[i]
-    return undefined
-  }
-
-  /** The click sink, keeping each click's time and beat so the beat sounding can be told. */
-  function countingClicks(sink: ClickSink): ClickSink {
-    let beatOfBar = 0
-    return {
-      click(at) {
-        beatOfBar = at.level === 'downbeat' ? 0 : beatOfBar + 1
-        const entry = { time: at.time, beat: beatOfBar }
-        clicks.push(entry)
-        const cancel = sink.click(at)
-        return () => {
-          clicks = clicks.filter((c) => c !== entry)
-          cancel()
-        }
-      },
-      stopAll: () => sink.stopAll(),
-    }
-  }
+  /** The click of the play running, which says the beat sounding; null while nothing clicks. */
+  let counter: ReturnType<typeof createClickCounter> | null = null
 
   function stop() {
     attempt++
@@ -193,7 +170,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     runs.forEach((run) => run.stop())
     runs = []
     musicStart = null
-    clicks = []
+    counter = null
     currentBar.value = null
     beat.value = null
     if (state.value !== 'error') state.value = 'idle'
@@ -210,7 +187,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     }
     const bar = barOfPositionIds(lead.activePositionIds(heard))
     if (bar !== currentBar.value) currentBar.value = bar
-    const sounding = lastClickBy(heard)?.beat ?? null
+    const sounding = counter?.beatAt(heard) ?? null
     if (sounding !== beat.value) beat.value = sounding
     frame = requestAnimationFrame(tick)
   }
@@ -236,7 +213,8 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       const startAt = audio.currentTime + START_DELAY_SECONDS
       const { wholeSeconds, clickBeat } = timing()
       musicStart = startAt + countIn.reduce((seconds, step) => seconds + step.value * wholeSeconds, 0)
-      const click = metronome.value ? { sink: countingClicks(createClickSink(audio)), beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
+      counter = metronome.value ? createClickCounter(createClickSink(audio)) : null
+      const click = counter ? { sink: counter.sink, beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
       // The click goes with the first run only (the chords, or the bass when no chord sounds), so it sounds once.
       runs = stepLists.map((steps, i) =>
         createPlaybackRun(steps, { sink: sinks[i]!, wholeSeconds, loop: false, startAt, metronome: i === 0 ? click : undefined }),

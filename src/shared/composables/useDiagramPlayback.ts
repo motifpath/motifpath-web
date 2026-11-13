@@ -3,6 +3,7 @@ import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
+import { createClickCounter } from '@/shared/audio/clickCounter'
 import { createClickSink } from '@/shared/audio/clickSink'
 import { claimPlayback, releasePlayback, stopAnyPlayback } from '@/shared/audio/exclusivePlayback'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
@@ -158,12 +159,19 @@ export function useDiagramPlayback(
   // Bumped by every Play and Stop, so a load that finishes after either is dropped.
   let attempt = 0
 
+  /** The beat of the bar its click is on, from 0; null while nothing clicks. */
+  const beat = ref<number | null>(null)
+  /** The click of the play running, which says the beat sounding; null while nothing clicks. */
+  let counter: ReturnType<typeof createClickCounter> | null = null
+
   function stop() {
     attempt++
     cancelAnimationFrame(frame)
     run?.stop()
     run = null
+    counter = null
     activePositionIds.value = []
+    beat.value = null
     if (state.value !== 'error') state.value = 'idle'
     releasePlayback(stop)
   }
@@ -180,6 +188,8 @@ export function useDiagramPlayback(
     // whatever holds it), and a step lasts many frames.
     const heardIds = run.activePositionIds(heard)
     if (!sameIds(heardIds, activePositionIds.value)) activePositionIds.value = heardIds
+    const sounding = counter?.beatAt(heard) ?? null
+    if (sounding !== beat.value) beat.value = sounding
     frame = requestAnimationFrame(tick)
   }
 
@@ -199,9 +209,8 @@ export function useDiagramPlayback(
       const sink = await loadVoiceSampler(audio, voice)
       if (current !== attempt) return
       const { wholeSeconds, clickBeat } = timing(tempo.value)
-      const metronome = toValue(options.metronome)
-        ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: beatsPerBar(signature) }
-        : undefined
+      counter = toValue(options.metronome) ? createClickCounter(createClickSink(audio)) : null
+      const metronome = counter ? { sink: counter.sink, beat: clickBeat, beatsPerBar: beatsPerBar(signature) } : undefined
 
       const scheduled = playbackSteps(steps, pitchOf, {
         direction: playback?.direction ?? 'as_authored',
@@ -250,5 +259,5 @@ export function useDiagramPlayback(
 
   onScopeDispose(stop)
 
-  return { canPlay, state, activePositionIds, tempo, toggle, stop, prefetch, checkVoice }
+  return { canPlay, state, activePositionIds, beat, tempo, toggle, stop, prefetch, checkVoice }
 }
