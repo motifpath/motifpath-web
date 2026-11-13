@@ -6,9 +6,9 @@ import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
 import { createClickSink } from '@/shared/audio/clickSink'
 import { claimPlayback, releasePlayback } from '@/shared/audio/exclusivePlayback'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
-import type { PlaybackRun } from '@/shared/audio/playbackRun'
+import type { ClickSink, PlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackStep } from '@/shared/audio/timeline'
-import { barOfPositionIds, bassLineSteps, chordSteps } from '@/shared/audio/progressionSteps'
+import { barOfPositionIds, bassLineSteps, bassNoteSteps, chordSteps } from '@/shared/audio/progressionSteps'
 import { fetchVoiceSamples } from '@/shared/audio/samplePrefetch'
 import { secondsPerWhole } from '@/shared/audio/timeline'
 import { useApi } from '@/shared/composables/useApi'
@@ -21,13 +21,20 @@ type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 type TimeSignature = components['schemas']['TimeSignature']
 
-/** What a cadence or progression plays: one chord voicing a bar, and on bass a line of roots. */
+/**
+ * A bass line in the bass's own voice: each bar's chord root on every beat, or each bar's exact
+ * notes as MIDI pitches, sharing the bar evenly.
+ */
+export type BassLine = { instrument: Instrument; roots: string[] } | { instrument: Instrument; bars: number[][] }
+
+/** What a cadence or progression plays: one chord voicing a bar, and on bass a line of roots or notes. */
 export interface ProgressionSource {
-  /** Each bar's voicing, in order, played in the chord instrument's voice. */
+  /** Each bar's voicing, in order, played in the chord instrument's voice; none when only the bass sounds. */
   chords: Diagram[]
-  chordInstrument: Instrument
+  /** The instrument the chords play in; null when no chord sounds. */
+  chordInstrument: Instrument | null
   /** The bass line under the chords, in the bass's own voice; null for none. */
-  bass: { instrument: Instrument; roots: string[] } | null
+  bass: BassLine | null
   tempoBpm: number
   /** The note value it starts in; quarters when it says none. */
   noteValue?: TempoNoteValue
@@ -47,6 +54,15 @@ const BAR_END_SLACK_SECONDS = 1e-6
 /** How far ahead of the audio clock the first bar is placed, so it isn't already late. */
 const START_DELAY_SECONDS = 0.1
 
+/** Whether chords sound: a chord instrument and at least one voicing. */
+function chordsSound(source: ProgressionSource): boolean {
+  return source.chordInstrument !== null && source.chords.length > 0
+}
+
+function bassSteps(bass: BassLine): PlaybackStep[] {
+  return 'bars' in bass ? bassNoteSteps(bass.bars) : bassLineSteps(bass.roots, bass.instrument.tuning ?? [])
+}
+
 /**
  * Plays a cadence or progression in a drill: the chords strummed bar by bar in their
  * instrument's voice, and on bass a line of their roots in the bass's voice, both on one clock.
@@ -63,6 +79,8 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
 
   const state = ref<PlaybackState>('idle')
   const currentBar = ref<number | null>(null)
+  /** The beat of the bar its click is on, from 0; null while nothing clicks. */
+  const beat = ref<number | null>(null)
   const voicesReady = ref<boolean | null>(null)
 
   const sourceNow = computed(() => toValue(source))
@@ -78,13 +96,20 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     return { wholeSeconds: secondsPerWhole(tempo.value, FOUR_FOUR) / factor, clickBeat: BEAT * factor }
   }
 
+  /** How many bars it plays: its chords', or its bass line's when no chord sounds. */
+  function barsOf(now: ProgressionSource): number {
+    if (chordsSound(now)) return now.chords.length
+    if (!now.bass) return 0
+    return 'bars' in now.bass ? now.bass.bars.length : now.bass.roots.length
+  }
+
   /** How long one play lasts at the tempo and note value it plays at now: a whole note a bar, the count-in a bar of beats. */
   const lengthMs = computed(() => {
     const now = sourceNow.value
     if (!now) return 0
     const { wholeSeconds } = timing()
     const countIn = (now.countInBars ?? 0) * wholeSeconds * speedFactor(noteValue.value)
-    return Math.round((now.chords.length * wholeSeconds + countIn) * 1000)
+    return Math.round((barsOf(now) * wholeSeconds + countIn) * 1000)
   })
 
   /**
@@ -95,11 +120,11 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     return Array.from({ length: bars }, () => ({ value: speedFactor(noteValue.value), positionIds: [], notes: [] }))
   }
 
-  /** Each voice the progression plays in, the chords' first. */
+  /** Each voice the progression plays in, the chords' first when they sound. */
   const voiceIds = computed(() => {
     const now = sourceNow.value
     if (!now) return []
-    return [now.chordInstrument.default_voice_id, ...(now.bass ? [now.bass.instrument.default_voice_id] : [])].filter(
+    return [...(chordsSound(now) ? [now.chordInstrument!.default_voice_id] : []), ...(now.bass ? [now.bass.instrument.default_voice_id] : [])].filter(
       (id): id is string => id !== undefined,
     )
   })
@@ -135,6 +160,26 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   let check = 0
   /** When the first chord's bar starts on the audio clock, after the count-in; null while nothing plays. */
   let musicStart: number | null = null
+  /** The clicks scheduled, each with its beat of the bar, in time order; a click cancelled leaves it. */
+  let clicks: { time: number; beat: number }[] = []
+
+  /** The click sink, keeping each click's time and beat so the beat sounding can be told. */
+  function countingClicks(sink: ClickSink): ClickSink {
+    let beatOfBar = 0
+    return {
+      click(at) {
+        beatOfBar = at.level === 'downbeat' ? 0 : beatOfBar + 1
+        const entry = { time: at.time, beat: beatOfBar }
+        clicks.push(entry)
+        const cancel = sink.click(at)
+        return () => {
+          clicks = clicks.filter((c) => c !== entry)
+          cancel()
+        }
+      },
+      stopAll: () => sink.stopAll(),
+    }
+  }
 
   function stop() {
     attempt++
@@ -142,21 +187,25 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     runs.forEach((run) => run.stop())
     runs = []
     musicStart = null
+    clicks = []
     currentBar.value = null
+    beat.value = null
     if (state.value !== 'error') state.value = 'idle'
     releasePlayback(stop)
   }
 
   function tick() {
-    const [chords] = runs
-    if (!chords || !context) return
+    const [lead] = runs
+    if (!lead || !context) return
     const heard = audibleTime(context)
     if (runs.every((run) => run.finished(heard))) {
       stop()
       return
     }
-    const bar = barOfPositionIds(chords.activePositionIds(heard))
+    const bar = barOfPositionIds(lead.activePositionIds(heard))
     if (bar !== currentBar.value) currentBar.value = bar
+    const sounding = clicks.findLast((c) => c.time <= heard)?.beat ?? null
+    if (sounding !== beat.value) beat.value = sounding
     frame = requestAnimationFrame(tick)
   }
 
@@ -175,13 +224,14 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       const sinks = await Promise.all(voices.map((voice) => loadVoiceSampler(audio, voice)))
       if (current !== attempt) return
       const countIn = countInSteps(now.countInBars ?? 0)
-      const stepLists = [[...countIn, ...chordSteps(now.chords, now.chordInstrument.tuning ?? [], STRUM_SECONDS)]]
-      if (now.bass) stepLists.push([...countIn, ...bassLineSteps(now.bass.roots, now.bass.instrument.tuning ?? [])])
+      const stepLists: PlaybackStep[][] = []
+      if (chordsSound(now)) stepLists.push([...countIn, ...chordSteps(now.chords, now.chordInstrument!.tuning ?? [], STRUM_SECONDS)])
+      if (now.bass) stepLists.push([...countIn, ...bassSteps(now.bass)])
       const startAt = audio.currentTime + START_DELAY_SECONDS
       const { wholeSeconds, clickBeat } = timing()
       musicStart = startAt + countIn.reduce((seconds, step) => seconds + step.value * wholeSeconds, 0)
-      const click = metronome.value ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
-      // The click goes with the chords only, so it sounds once whatever plays under them.
+      const click = metronome.value ? { sink: countingClicks(createClickSink(audio)), beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
+      // The click goes with the first run only (the chords, or the bass when no chord sounds), so it sounds once.
       runs = stepLists.map((steps, i) =>
         createPlaybackRun(steps, { sink: sinks[i]!, wholeSeconds, loop: false, startAt, metronome: i === 0 ? click : undefined }),
       )
@@ -198,12 +248,12 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   // the bass keeps the beats left in the sounding bar, so it never runs ahead of the chords.
   watch([tempo, noteValue], () => {
     const audio = context
-    const [chords, ...under] = runs
-    if (!audio || !chords) return
+    const [lead, ...under] = runs
+    if (!audio || !lead) return
     const { wholeSeconds, clickBeat } = timing()
     const now = audio.currentTime
-    const barEnd = chords.stepEndAt(now)
-    chords.setWholeSeconds(wholeSeconds, now, clickBeat)
+    const barEnd = lead.stepEndAt(now)
+    lead.setWholeSeconds(wholeSeconds, now, clickBeat)
     under.forEach((run) => run.setWholeSeconds(wholeSeconds, barEnd === null ? now : barEnd - BAR_END_SLACK_SECONDS))
   })
 
@@ -245,5 +295,5 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
 
   onScopeDispose(stop)
 
-  return { state, status, currentBar, tempo, noteValue, metronome, lengthMs, toggle, stop, musicMs }
+  return { state, status, currentBar, beat, tempo, noteValue, metronome, lengthMs, toggle, stop, musicMs }
 }
