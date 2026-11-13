@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import { expect, waitFor } from 'storybook/test'
+import { expect } from 'storybook/test'
 
 import { changeTake, chordChangeItem, chordDiagramHandler, chordInstrumentsHandler, rootChangeItem } from '@/features/student/testing/chordItems'
 import { drillBass } from '@/shared/testUtils/drill'

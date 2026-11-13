@@ -45,7 +45,7 @@ export const BassChordTones: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /root, 3rd and 5th of em|terça e a quinta de em/i }))
     await expect(canvas.getByRole('heading', { name: /^Em:/ })).toBeVisible()
-    await expect(canvas.getByRole('img', { name: /^(third|terça),/i })).toBeVisible()
+    await expect(canvas.getByRole('img', { name: /^(third above|terça acima),/i })).toBeVisible()
   },
 }
 
