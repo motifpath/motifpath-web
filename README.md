@@ -270,18 +270,16 @@ year; `index.html` and the other entry files are always revalidated, and the CDN
 invalidated after each deploy.
 
 - **Staging** deploys on every push to `stage`.
-- **Production** deploys a **release**: tag the `stage → main` merge commit on `main`
-  with the next version and push the tag. Untagged builds are intermediate ones
-  (release candidates on `stage`).
-
-  ```bash
-  git fetch origin main && git tag -a v0.2.0 origin/main -m "v0.2.0" && git push origin v0.2.0
-  ```
-
-  The tag builds and publishes that commit (after the `production` environment's
-  approval, if it has reviewers), then publishes a GitHub Release with notes since the
-  previous tag. A tag that is not on `main` is refused. Versions are this repository's
-  own; motifpath-core numbers its releases separately.
+- **Production** deploys a **release**, and merging a PR into `main` makes one. Every PR
+  into `main` (the `stage → main` promotion or a `hotfix/…`) needs exactly one release
+  label: `release:major`, `release:minor` or `release:patch`. The required `Release
+  label` check fails until it has one, and its summary names the version the merge will
+  release. On merge, `release.yml` tags the merge commit with that version, builds and
+  publishes it with no approval, then publishes a GitHub Release with notes since the
+  previous tag. Nobody pushes `v*` tags by hand. Untagged builds are intermediate ones
+  (release candidates on `stage`). Versions are this repository's own; motifpath-core
+  numbers its releases separately, and when web depends on a core change, core's
+  release goes first.
 - **Rollback or redeploy**: Actions → Deploy → Run workflow on `main`, with
   `environment: production` and `release` set to an earlier tag. In an emergency
   `release` also takes a full commit SHA on `main`; that deploy publishes no release.
@@ -290,8 +288,8 @@ invalidated after each deploy.
   gh workflow run deploy.yml -R motifpath/motifpath-web --ref main -f environment=production -f release=v0.1.0
   ```
 
-Each GitHub environment (`staging`: branches `stage`, `main`; `production`: **Selected
-branches and tags** with branch `main` and tag pattern `v*`, with required reviewers) needs:
+Each GitHub environment (`staging`: branches `stage`, `main`; `production`: branch `main`,
+no required reviewers) needs:
 
 | Kind | Name | Value |
 |---|---|---|
