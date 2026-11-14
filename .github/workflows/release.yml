@@ -1,0 +1,69 @@
+name: Release
+
+# Merging a PR into main is a release: the merged PR's one release label sets
+# the next vX.Y.Z, the merge commit gets that tag, and the release is built and
+# deployed to production. A merge without exactly one release label stops here
+# and deploys nothing; the Release label check keeps that from happening.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # The tag is created with the built-in token, so pushing it starts no other
+  # workflow; the deploy is called from here.
+  release:
+    name: Tag the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag the merge commit with the next version
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --tags --force origin
+          existing=$(git tag --points-at "$GITHUB_SHA" --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
+          if [[ -n "$existing" ]]; then
+            echo "$GITHUB_SHA is already release $existing (a rerun)."
+            echo "tag=$existing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '.[0].number // empty')
+          [[ -n "$pr" ]] || { echo "::error::$GITHUB_SHA did not come from a PR, so it has no release label; nothing is released"; exit 1; }
+          mapfile -t labels < <(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/labels" --jq '.[].name')
+          if ! tag=$(scripts/next-release.sh "${labels[@]}" 2>&1); then
+            echo "::error::PR #$pr: $tag; nothing is released"
+            exit 1
+          fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+          echo "PR #$pr releases $tag."
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to production
+    needs: release
+    uses: ./.github/workflows/deploy.yml
+    # deploy.yml's GitHub Release job needs contents: write.
+    permissions:
+      contents: write
+    with:
+      environment: production
+      release: ${{ needs.release.outputs.tag }}
+    secrets: inherit
